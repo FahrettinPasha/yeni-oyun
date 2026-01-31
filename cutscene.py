@@ -1,7 +1,7 @@
 """
 cutscene.py
 ULTIMATE Cyberpunk/AI Cutscene for Fragmentia
-Düzeltme: Altıpatlar (Revolver) sahnesi siyah ekran hatası giderildi.
+DÜZELTME: Eksik olan draw_cyber_revolver fonksiyonu eklendi.
 """
 
 import pygame
@@ -18,6 +18,53 @@ PURE_WHITE = (255, 255, 255)
 PURE_BLACK = (0, 0, 0)
 DATA_BLUE = (0, 200, 255)
 WARNING_YELLOW = (255, 200, 0)
+
+# --- EKSİK OLAN FONKSİYON BURAYA EKLENDİ ---
+def draw_cyber_revolver(surface, x, y, color, scale=1.0):
+    """
+    Eksik olan Cyber Revolver çizim fonksiyonu.
+    Verilen koordinatta (x,y) neon hatlı bir silah çizer.
+    """
+    # Ölçeklendirme yardımcısı
+    def s(val): return int(val * scale)
+    
+    # 1. Kabza (Handle)
+    handle_points = [
+        (x - s(30), y + s(10)),
+        (x - s(10), y + s(10)),
+        (x + s(5), y + s(50)),
+        (x - s(35), y + s(50))
+    ]
+    pygame.draw.polygon(surface, (30, 30, 40), handle_points) # İç Dolgu
+    pygame.draw.polygon(surface, color, handle_points, 2)     # Neon Çerçeve
+
+    # 2. Tetik Korkuluğu
+    pygame.draw.lines(surface, color, False, [
+        (x - s(5), y + s(20)), 
+        (x + s(10), y + s(40)), 
+        (x + s(25), y + s(20))
+    ], 2)
+
+    # 3. Ana Gövde (Body)
+    body_rect = pygame.Rect(x - s(30), y - s(20), s(70), s(35))
+    pygame.draw.rect(surface, (20, 20, 30), body_rect)
+    pygame.draw.rect(surface, color, body_rect, 2)
+
+    # 4. Namlu (Barrel) - Uzun kısım
+    barrel_rect = pygame.Rect(x + s(40), y - s(15), s(60), s(20))
+    pygame.draw.rect(surface, (40, 40, 50), barrel_rect)
+    pygame.draw.rect(surface, color, barrel_rect, 2)
+    
+    # Namlu ucu parlaması
+    pygame.draw.line(surface, color, (x + s(40), y), (x + s(100), y), 1)
+
+    # 5. Silindir (Cylinder/Top)
+    cylinder_rect = pygame.Rect(x - s(5), y - s(18), s(35), s(30))
+    pygame.draw.ellipse(surface, (60, 60, 70), cylinder_rect)
+    pygame.draw.ellipse(surface, color, cylinder_rect, 2)
+    
+    # Detay çizgileri (Hacker teması)
+    pygame.draw.line(surface, color, (x - s(30), y - s(5)), (x + s(100), y - s(5)), 1)
 
 
 class MatrixRain:
@@ -306,15 +353,15 @@ class AICutscene:
             {"time": 21.0, "type": "GLITCH_CLIMAX", "text": "HATALARI DÜZELTME ZAMANI!", "color": ALERT_RED},
         ]
 
-        # 4. FINAL MEMORY (SİLAH SAHNESİ DÜZELTİLDİ)
+        # 4. FINAL MEMORY
         timeline_final_memory = [
             {"time": 1.0, "type": "BIOS", "text": "MEMORY FRAGMENT FOUND... LOADING..."},
             {"time": 3.0, "type": "EYE_WAKE", "text": "Bunca gürültünün arasında...", "speaker": "İÇ SES", "color": (255, 200, 50)},
             {"time": 5.5, "type": "TALK", "text": "Onu hatırlıyorum. En yakın dostumu.", "speaker": "İÇ SES"},
             {"time": 8.0, "type": "TALK", "text": "Bana sırtımı kollamayı öğretmişti.", "speaker": "İÇ SES"},
             # SİLAH GÖSTERİMİ
-            {"time": 15.5, "type": "TALK", "text": "Bu sefer ıskalamayacağım.", "speaker": "OYUNCU", "color": (255, 255, 255)},
-            {"time": 18.0, "type": "GLITCH_CLIMAX", "text": "SON SAVAŞ BAŞLIYOR!", "color": (255, 50, 50)},
+            {"time": 12.0, "type": "WEAPON_SHOW", "text": "Bu sefer ıskalamayacağım.", "speaker": "OYUNCU", "color": (0, 255, 255)}, 
+            {"time": 16.0, "type": "GLITCH_CLIMAX", "text": "SON SAVAŞ BAŞLIYOR!", "color": (255, 50, 50)},
         ]
         # 5. GOOD ENDING (KURTULUŞ - YÜKSEK KARMA)
         timeline_good_ending = [
@@ -355,21 +402,13 @@ class AICutscene:
         else:
             self.timeline = timeline_intro
 
-        if self.scenario_type == 'BETRAYAL':
-            self.timeline = timeline_betrayal
-        elif self.scenario_type == 'JUDGMENT':
-            self.timeline = timeline_judgment
-        elif self.scenario_type == 'FINAL_MEMORY':
-            self.timeline = timeline_final_memory
-        else:
-            self.timeline = timeline_intro
-            
         self.current_step = 0
         self.state_type = "BIOS"
         self.bios_lines = []
         
         self.glitch_amount = 0.0
         self.shake_offset = (0, 0)
+        self.text_color = CYBER_GREEN # Varsayılan renk
 
     def load_sounds(self):
         sound_names = ['sfx_bip', 'sfx_glitch', 'sfx_awake']
@@ -517,8 +556,9 @@ class AICutscene:
             if self.state_type == "GLITCH_CLIMAX":
                  txt = self.font_large.render(self.current_text, True, ALERT_RED)
                  self.screen.blit(txt, (self.width//2 - txt.get_width()//2 + shake_x, self.height//2 + shake_y))
-
-        # 5. SİLAH GÖSTERİMİ (BU BLOK EKSİKTİ, EKLENDİ)
+        
+        # 5. SİLAH GÖSTERİMİ
+        elif self.state_type == "WEAPON_SHOW":
             # Arka plan matrix
             self.matrix_rain.draw(self.screen, self.font_matrix, (0, 50, 50))
             
@@ -528,7 +568,11 @@ class AICutscene:
             draw_cyber_revolver(self.screen, cx, cy, self.text_color, scale)
             
             # Teknik Yazı
-            font_tech = pygame.font.SysFont("consolas", 20)
+            try:
+                font_tech = pygame.font.SysFont("consolas", 20)
+            except:
+                font_tech = pygame.font.Font(None, 24)
+                
             tech_text = font_tech.render("[WEAPON_CLASS: LEGENDARY]", True, self.text_color)
             self.screen.blit(tech_text, (cx - tech_text.get_width()//2, cy + 100))
             

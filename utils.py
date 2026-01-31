@@ -2,7 +2,7 @@ import pygame
 import random
 import math
 import numpy as np
-
+import os
 # --- SİSTEM FONKSİYONLARI ---
 
 def generate_sound_effect(base_freq, duration, volume=1.0):
@@ -86,17 +86,43 @@ def generate_calm_ambient():
     except:
         return generate_ambient_fallback()
 
-def load_sound_asset(filepath, fallback_generator, volume=1.0):
-    import os
+
+def get_silent_sound():
+    """Hata durumunda kullanılacak boş, sessiz bir ses nesnesi döndürür."""
     try:
-        if os.path.exists(filepath):
-            sound = pygame.mixer.Sound(filepath)
-            sound.set_volume(volume)
-            return sound
-        else:
-            return fallback_generator()
+        # Çok kısa, sessiz bir buffer oluştur
+        buffer = bytearray([0] * 200) 
+        return pygame.mixer.Sound(buffer=buffer)
     except:
-        return fallback_generator()
+        # Eğer bu bile çalışmazsa (örn: mixer init edilmediyse) Mock bir sınıf döndür
+        class MockSound:
+            def play(self, *args, **kwargs): pass
+            def set_volume(self, v): pass
+            def stop(self): pass
+        return MockSound()
+
+def load_sound_asset(filepath, fallback_generator=None, volume=1.0):
+    """
+    Dosyayı yüklemeye çalışır. 
+    Dosya yoksa, bozuksa veya formatı (MP3/WAV) Pygame tarafından sevilmezse
+    OYUNU ÇÖKERTMEZ, sessiz bir nesne döndürür.
+    """
+    
+    # 1. Dosya yolu kontrolü
+    if not os.path.exists(filepath):
+        print(f"[SES UYARISI] Dosya bulunamadı, sessiz mod: {filepath}")
+        return get_silent_sound()
+
+    # 2. Yükleme Denemesi
+    try:
+        sound = pygame.mixer.Sound(filepath)
+        sound.set_volume(volume)
+        return sound
+    except Exception as e:
+        # "Unrecognized audio format" veya başka bir hata alınırsa burası çalışır
+        print(f"[SES HATASI] Dosya bozuk veya desteklenmiyor ({filepath}): {e}")
+        print(f"-> {filepath} için sessiz mod devrede.")
+        return get_silent_sound()
 
 # --- ÇİZİM FONKSİYONLARI ---
 

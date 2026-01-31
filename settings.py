@@ -69,62 +69,62 @@ STORY_CHAPTERS = {
 EASY_MODE_LEVELS = {
     1: {
         "name": "MİDE KATMANI",
-        "goal_score": 2000,
+        "goal_score": 500,  # Eskisi: 2000 (Çok daha kısa)
         "theme_index": 3, 
         "speed_mult": 1.0,
         "desc": "Skorunu yükselt veya silin.",
-        "music_file": "ara1.mp3"  # <-- DEĞİŞTİ
+        "music_file": "ara1.mp3"
     },
     2: {
         "name": "NEON PAZARI",
-        "goal_score": 4000,
+        "goal_score": 1200, # Eskisi: 4000
         "theme_index": 0,
         "speed_mult": 1.2,
         "desc": "Egemenlerin gölgesinden kaç.",
-        "music_file": "ara1.mp3"  # <-- DEĞİŞTİ
+        "music_file": "ara1.mp3"
     },
     3: {
         "name": "CAM KULELER",
-        "goal_score": 8000,
+        "goal_score": 2500, # Eskisi: 8000
         "theme_index": 1,
         "speed_mult": 1.5,
         "desc": "Hakikate Hicret.",
-        "music_file": "ara1.mp3"  # <-- DEĞİŞTİ
+        "music_file": "ara1.mp3"
     },
-    4: { # DİNLENME ALANI (İstersen burayı sakin bırakabilirsin ama ara1 yaptık)
+    4: { 
         "name": "DİNLENME NOKTASI ALPHA",
         "type": "rest_area",
         "goal_score": 0,
         "theme_index": 4, 
         "speed_mult": 0.0,
         "desc": "Güvenli Bölge. Soluklan.",
-        "music_file": "ara1.mp3"  # <-- DEĞİŞTİ (Sakin müzik kalsın dersen 'calm_ambient.mp3' yap)
+        "music_file": "ara1.mp3"
     },
     5: {
         "name": "VERİ OTOBANI",
-        "goal_score": 15000,
+        "goal_score": 4000, # Eskisi: 15000
         "theme_index": 0,
         "speed_mult": 1.8,
         "desc": "Hız sınırlarını aş.",
-        "music_file": "ara1.mp3"  # <-- DEĞİŞTİ
+        "music_file": "ara1.mp3"
     },
     6: {
         "name": "BELLEK ÇÖPLÜĞÜ",
-        "goal_score": 25000,
+        "goal_score": 6000, # Eskisi: 25000
         "theme_index": 2, 
         "speed_mult": 2.0,
         "desc": "Silinmiş veriler arasında kaybolma.",
-        "music_file": "ara1.mp3"  # <-- DEĞİŞTİ
+        "music_file": "ara1.mp3"
     },
     7: {
         "name": "KIZIL ALARM",
-        "goal_score": 40000,
+        "goal_score": 9000, # Eskisi: 40000
         "theme_index": 1,
         "speed_mult": 2.3,
         "desc": "Sistem seni fark etti. Kaç.",
-        "music_file": "ara1.mp3"  # <-- DEĞİŞTİ
+        "music_file": "ara1.mp3"
     },
-    8: { # DİNLENME ALANI
+    8: { 
         "name": "DİNLENME NOKTASI OMEGA",
         "type": "rest_area",
         "goal_score": 0,
@@ -135,46 +135,46 @@ EASY_MODE_LEVELS = {
     },
     9: {
         "name": "EGEMENLERİN KAPISI",
-        "goal_score": 60000,
+        "goal_score": 12000, # Eskisi: 60000
         "theme_index": 1,
         "speed_mult": 2.5,
         "desc": "Taht odasına giden son koridor.",
-        "music_file": "ara1.mp3"  # <-- DEĞİŞTİ
+        "music_file": "ara1.mp3"
     },
-    10: { # --- İLK BOSS ---
-        "name": "YARGI GÜNÜ",
-        "goal_score": 50000,
-        "theme_index": 1,
-        "speed_mult":  1.2, 
-        "desc": "Son çıkışa kadar koş.",
-        "music_file": "boss1.mp3", # <-- İLK BOSS MÜZİĞİ
-        "type": "boss_fight"
+    10: {
+        'name': 'YARGI GÜNÜ KOŞUSU',
+        'goal_score': 100000, # Skor önemsiz, Boss ölünce biter
+        'speed_mult': 1.4,    # <--- HIZ VERDİK (Platformlar aksın)
+        'theme_index': 1,     # Kule Teması
+        'type': 'normal',     # <--- 'boss_fight' YAZMA! Düz zemin olmasın.
+        'music_file': 'boss1.mp3',
+        'no_enemies': True    # <--- Rastgele düşman yok, sadece Boss.
     },
     
     # --- GİZLİ BÖLÜMLER (İKİNCİ YARI) ---
     11: {
         "name": "SİSTEM ÇEKİRDEĞİ",
-        "goal_score": 60000,
+        "goal_score": 18000, # Eskisi: 60000
         "theme_index": 3,
         "speed_mult": 2.6,
         "desc": "Vasi sana ikinci bir şans verdi.",
-        "music_file": "ara2.mp3" # <-- İKİNCİ ARA MÜZİK
+        "music_file": "ara2.mp3"
     },
     12: {
         "name": "VERİ AKIŞI",
-        "goal_score": 70000,
+        "goal_score": 22000, # Eskisi: 70000
         "theme_index": 0,
         "speed_mult": 2.7,
         "desc": "Hatalı veriler her yerde.",
-        "music_file": "ara2.mp3" # <-- DEĞİŞTİ
+        "music_file": "ara2.mp3"
     },
     13: {
         "name": "KARANLIK TÜNEL",
-        "goal_score": 80000,
+        "goal_score": 26000, # Eskisi: 80000
         "theme_index": 1,
         "speed_mult": 2.8,
         "desc": "Işığa ulaşmak zorundasın.",
-        "music_file": "ara2.mp3" # <-- DEĞİŞTİ
+        "music_file": "ara2.mp3"
     },
     14: {
         "name": "SON DİNLENME",
@@ -185,17 +185,17 @@ EASY_MODE_LEVELS = {
         "desc": "Büyük finalden önceki sessizlik.",
         "music_file": "ara2.mp3"
     },
-    15: { # --- FİNAL BOSS ---
-        "name": "GERÇEK SON",
-        "goal_score": 100000,
-        "theme_index": 2,
-        "speed_mult":  1.2, 
-        "desc": "Her şeyin bittiği yer.",
-        "music_file": "boss2.mp3", # <-- İKİNCİ BOSS MÜZİĞİ
-        "type": "boss_fight"
+    15: { 
+        "name": "NİHAİ HAKİKAT",
+        "goal_score": 100000, 
+        "theme_index": 2, 
+        "speed_mult":  1.4,   # <--- HIZ VAR (Platformlar aksın)
+        "desc": "Zaman dolana kadar dayan.",
+        "music_file": "boss2.mp3",
+        "type": "normal",     # <--- BURASI ÇOK ÖNEMLİ! 'normal' olmalı ki zemin düzleşmesin.
+        "no_enemies": True    # Rastgele düşman çıkmasın, sadece Boss olsun.
     }
 }
-
 
 # --- RENKLER ---
 DARK_BLUE = (5, 5, 10) 
@@ -216,10 +216,10 @@ PLAYER_SPEED = 10
 MAX_JUMPS = 2
 
 # --- DASH & SLAM AYARLARI ---
-DASH_SPEED = 60
-DASH_DURATION = 12
-DASH_COOLDOWN = 60 
-SLAM_COOLDOWN_BASE = 120 
+DASH_SPEED = 90       # Eski değer: 60 (Hızlandırdık)
+DASH_DURATION = 18    # Eski değer: 12 (Süreyi 2 katına çıkardık, artık daha uzun süre kayıyor)
+DASH_COOLDOWN = 60    # Eski değer: 60 (Menzil arttı diye cooldown'ı biraz kısalttım ki daha sık kullanabil)
+SLAM_COOLDOWN_BASE = 100 # Eski değer: 120 (Slam de biraz daha sık dolsun)
 
 # --- KAMERA ---
 INITIAL_CAMERA_SPEED = 5

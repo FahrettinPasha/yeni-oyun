@@ -22,7 +22,8 @@ class SaveManager:
     def create_default_data(self):
         """Varsayılan oyun verilerini oluşturur."""
         default_data = {
-            "karma": 0,  # YENİ: Başlangıç karması nötr (0)
+            "karma": 0,
+            "saved_souls": 0, # Kurtarılan ruh sayısı eklendi
             "easy_mode": {
                 "unlocked_levels": 1,
                 "completed_levels": [],
@@ -52,22 +53,27 @@ class SaveManager:
             self.data["karma"] = 0
         
         self.data["karma"] += amount
-        
-        # ESKİ KOD (SİLİNECEK):
-        # self.data["karma"] = max(-100, min(100, self.data["karma"]))
-        
-        # YENİ KOD (SINIRLARI GENİŞLET):
-        # Soykırım Modu için -1000'e kadar izin verelim
+        # Limitler: -1000 (Soykırım) ile +1000 (Kurtuluş) arası
         self.data["karma"] = max(-1000, min(1000, self.data["karma"]))
-        
         self.save_data()
 
     def get_karma(self):
-        """Mevcut karma değerini döndürür."""
         return self.data.get("karma", 0)
 
+    # --- EKSİK OLAN FONKSİYONLAR BURAYA EKLENDİ ---
+    def add_saved_soul(self, amount=1):
+        """Kurtarılan ruh sayısını artırır."""
+        if "saved_souls" not in self.data:
+            self.data["saved_souls"] = 0
+        self.data["saved_souls"] += amount
+        self.save_data()
+
+    def get_saved_count(self):
+        """Toplam kurtarılan ruh sayısını verir."""
+        return self.data.get("saved_souls", 0)
+    # ----------------------------------------------
+
     def update_high_score(self, mode, level_idx, score):
-        """Eğer yeni skor daha yüksekse günceller."""
         if mode not in self.data:
             self.data[mode] = {"unlocked_levels": 1, "completed_levels": [], "high_scores": {}}
         
@@ -81,7 +87,6 @@ class SaveManager:
         return False
 
     def unlock_next_level(self, mode, current_level_idx):
-        """Bölüm tamamlandığında bir sonrakini açar."""
         if mode not in self.data:
             self.data[mode] = {"unlocked_levels": 1, "completed_levels": [], "high_scores": {}}
             
@@ -96,7 +101,6 @@ class SaveManager:
         return True
 
     def reset_progress(self):
-        """Tüm ilerlemeyi siler."""
         self.data = self.create_default_data()
         return True
 

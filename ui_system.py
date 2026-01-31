@@ -531,19 +531,37 @@ def render_ui(surface, state, data, mouse_pos=(0,0)):
         draw_cyber_panel(surface, left_panel, current_theme["border_color"], 
                         f"BÖLÜM {data['level_idx']}")
         
-        d_fill = 200 * (1 - (data['dash_cd'] / data['active_dash_max']))
+        # --- UI SYSTEM DÜZELTMESİ BAŞLANGICI ---
+        
+        # DASH BARI
+        active_dash_max = data.get('active_dash_max', 1)
+        # Eğer max değer 0 veya daha küçükse (Sınırsız Dash), barı full göster
+        if active_dash_max <= 0:
+            d_fill = 200 
+        else:
+            d_fill = 200 * (1 - (data['dash_cd'] / active_dash_max))
+            
         pygame.draw.rect(surface, (50, 50, 50), (60, 85, 200, 10))
-        pygame.draw.rect(surface, PLAYER_DASH, (60, 85, d_fill, 10))
+        pygame.draw.rect(surface, PLAYER_DASH, (60, 85, max(0, d_fill), 10))
         
         dash_font = pygame.font.Font(None, 20)
         draw_text_with_shadow(surface, "DASH", dash_font, (60, 70), PLAYER_DASH, align='midleft')
         
-        s_fill = 200 * (1 - (data['slam_cd'] / data['active_slam_max']))
+        # SLAM BARI
+        active_slam_max = data.get('active_slam_max', 1)
+        # Eğer max değer 0 veya daha küçükse (Sınırsız Slam), barı full göster
+        if active_slam_max <= 0:
+            s_fill = 200
+        else:
+            s_fill = 200 * (1 - (data['slam_cd'] / active_slam_max))
+            
         pygame.draw.rect(surface, (50, 50, 50), (60, 115, 200, 10))
-        pygame.draw.rect(surface, PLAYER_SLAM, (60, 115, s_fill, 10))
+        pygame.draw.rect(surface, PLAYER_SLAM, (60, 115, max(0, s_fill), 10))
         
         slam_font = pygame.font.Font(None, 20)
         draw_text_with_shadow(surface, "SLAM", slam_font, (60, 100), PLAYER_SLAM, align='midleft')
+
+        # --- UI SYSTEM DÜZELTMESİ BİTİŞİ ---
         
         # --- KARMA GÖSTERGESİ (YENİ) ---
         karma = data.get('karma', 0)

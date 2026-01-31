@@ -167,11 +167,10 @@ from cutscene import AICutscene
 # --- Asset Paths Tanımı ---
 asset_paths = {
     'font': 'assets/fonts/VCR_OSD_MONO.ttf',
-    'sfx_bip': 'assets/sounds/bip.wav',
-    'sfx_glitch': 'assets/sounds/glitch.wav',
-    'sfx_awake': 'assets/sounds/awake.wav',
-    'npc_image': 'assets/images/npc_silhouette.png'
-}
+    'sfx_bip': 'assets/sounds/bip.mp3',      # .wav -> .mp3
+    'sfx_glitch': 'assets/sounds/glitch.mp3', # .wav -> .mp3
+    'sfx_awake': 'assets/sounds/awake.mp3',   # .wav -> .mp3
+    'npc_image': 'assets/images/npc_silhouette.png'}
 
 # --- YENİ: BOSS MANAGER SİSTEMİ ---
 boss_manager_system = BossManager()
@@ -214,14 +213,19 @@ vfx_surface = pygame.Surface((LOGICAL_WIDTH, LOGICAL_HEIGHT), pygame.SRCALPHA)
 
 # --- 2. SES AYARLARI ---
 FX_VOLUME = 0.7
-AMBIENT_CHANNEL = pygame.mixer.Channel(0)
-FX_CHANNEL = pygame.mixer.Channel(1)
+try:
+    pygame.mixer.init() # Garanti olsun diye tekrar init kontrolü
+    AMBIENT_CHANNEL = pygame.mixer.Channel(0)
+    FX_CHANNEL = pygame.mixer.Channel(1)
+except:
+    print("Ses kartı bulunamadı veya meşgul.")
 
 # SES EFEKTLERİ
-JUMP_SOUND = load_sound_asset("assets/sfx/jump.wav", lambda: generate_sound_effect(350, 90), FX_VOLUME * 0.9)
-DASH_SOUND = load_sound_asset("assets/sfx/dash.wav", lambda: generate_sound_effect(700, 60), FX_VOLUME * 1.1)
-SLAM_SOUND = load_sound_asset("assets/sfx/slam.wav", lambda: generate_sound_effect(100, 150, 0.7), FX_VOLUME * 1.5)
-EXPLOSION_SOUND = load_sound_asset("assets/sfx/explosion.wav", lambda: generate_sound_effect(50, 300, 0.5), FX_VOLUME * 1.2)
+DASH_SOUND = load_sound_asset("assets/sfx/dash.wav", volume=FX_VOLUME * 1.1)
+SLAM_SOUND = load_sound_asset("assets/sfx/slam.wav", volume=FX_VOLUME * 1.5)
+
+from utils import get_silent_sound
+EXPLOSION_SOUND = get_silent_sound() 
 
 current_level_music = None
 
@@ -858,7 +862,7 @@ def apply_display_settings():
     screen = pygame.display.set_mode((current_display_w, current_display_h), flags, vsync=1)
 
 def add_new_platform(start_x=None):
-    """Yeni platform ekler. Eğer platformda düşman varsa, hemen peşine GÜVENLİ bir platform ekler."""
+    """Yeni platform ekler. Düşman kontrolü ayarlara göre yapılır."""
     if start_x is None:
         if len(all_platforms) > 0:
             rightmost = max(all_platforms, key=lambda p: p.rect.right)
@@ -872,51 +876,46 @@ def add_new_platform(start_x=None):
     
     new_plat = Platform(start_x, y, width, 50)
     all_platforms.add(new_plat)
+
+    # --- LEVEL 10 VE 15 İÇİN ÖZEL KONTROL ---
+    # Bu bölümlerde platformlar oluşsun ama düşmanlar 'add_new_platform' ile değil
+    # Boss Manager veya özel script ile yönetilsin.
     if current_level_idx in [10, 15]:
         return 
 
-    
     has_enemy = False
     
-    # GÜNCELLEME: Yeni düşman tiplerini çağırma mantığı
-    # Ayarları kontrol et, eğer "no_enemies" varsa düşman koyma
+    # Ayarları kontrol et
     lvl_props = EASY_MODE_LEVELS.get(current_level_idx, {})
     
+    # "no_enemies" True ise düşman koyma
     if not lvl_props.get("no_enemies") and width > 120 and random.random() < 0.4:
         # Bölüm zorluğuna göre düşman çeşitliliği
         enemy_roll = random.random()
         
-        # Level 7 ve üzeri: Tank Düşman ihtimali
         if current_level_idx >= 7 and enemy_roll < 0.15:
             enemy = TankEnemy(new_plat)
-        # Level 4 ve üzeri: Drone Düşman ihtimali
         elif current_level_idx >= 4 and enemy_roll < 0.35:
-            # Drone havada olur, platformun biraz üstüne koy
             drone_y = y - random.randint(50, 150)
             enemy = DroneEnemy(new_plat.rect.centerx, drone_y)
-        # Diğer durumlarda: Cursed Enemy (Standart)
         else:
             enemy = CursedEnemy(new_plat)
             
         all_enemies.add(enemy)
         has_enemy = True
 
-    # --- YENİ ÖZELLİK: DÜŞMAN VARSA GÜVENLİ PLATFORM EKLE ---
+    # Düşman varsa güvenli platform ekle
     if has_enemy:
-        # Hemen arkasına (biraz daha kısa bir boşlukla) güvenli platform ekle
-        safe_gap = random.randint(150, 250) # Oyuncunun rahat atlayabileceği mesafe
+        safe_gap = random.randint(150, 250)
         safe_start_x = new_plat.rect.right + safe_gap
         safe_width = random.randint(PLATFORM_MIN_WIDTH, PLATFORM_MAX_WIDTH)
-        # Yükseklik değişimi çok olmasın ki kaçabilsin
         possible_heights = [h for h in PLATFORM_HEIGHTS if abs(h - y) <= VERTICAL_GAP]
         if not possible_heights: possible_heights = PLATFORM_HEIGHTS
         safe_y = random.choice(possible_heights)
         
         safe_plat = Platform(safe_start_x, safe_y, safe_width, 50)
-        # İşaretle: Bu platformda asla düşman olamaz
-        safe_plat.theme_index = CURRENT_THEME # Tema bozulmasın
+        safe_plat.theme_index = CURRENT_THEME
         all_platforms.add(safe_plat)
-        # Burada düşman ekleme kodu YOK, böylece güvenli alan garantilenir.
 
 def start_loading_sequence(next_state_override=None):
     global GAME_STATE, loading_progress, loading_logs, loading_timer, loading_stage, target_state_after_load
@@ -1323,6 +1322,11 @@ def init_game():
     # --- YENİ: Level 15 için yeni değişkenler ---
     global level_15_timer, finisher_active, finisher_state_timer, finisher_type, level_15_cutscene_played
 
+    # --- EKSİK OLAN SATIR BU! (Bunu ekle) ---
+    lvl_config = EASY_MODE_LEVELS.get(current_level_idx, EASY_MODE_LEVELS[1])
+    # ----------------------------------------
+
+    # ... (Kodun geri kalanı aynı şekilde devam etsin) ...
     # --- DÜZELTME: DEĞİŞKENLERİ SADECE GEREKİRSE SIFIRLA ---
     
     # Eğer normal bölümlerdeysek (1-10), her şeyi sıfırla.
@@ -1334,13 +1338,23 @@ def init_game():
     
     # YENİ: Level 15 değişkenlerini sıfırla
     if current_level_idx == 15:
-        level_15_timer = 0.0
-        finisher_active = False
-        finisher_state_timer = 0.0
-        finisher_type = None
-        level_15_cutscene_played = False
-
-    lvl_config = EASY_MODE_LEVELS.get(current_level_idx, EASY_MODE_LEVELS[1])
+        karma = save_manager.get_karma()
+        boss = None
+        
+        # Boss'u ekranın sağında, havada veya yerde konumlandır
+        boss_spawn_x = LOGICAL_WIDTH - 300 
+        
+        if karma <= -20:
+            boss = AresBoss(boss_spawn_x, LOGICAL_HEIGHT - 200)
+        elif karma >= 20:
+            boss = VasilBoss(LOGICAL_WIDTH // 2, 100) # Vasi havada dursun
+        else:
+            boss = NexusBoss(boss_spawn_x, LOGICAL_HEIGHT - 400)
+        
+        if boss:
+            # ÖNEMLİ: Boss kamera ile kayıp gitmesin, ekranda sabit kalsın!
+            boss.ignore_camera_speed = True 
+            all_enemies.add(boss)
     
     # Varsayılan değerler
     active_player_speed = PLAYER_SPEED
@@ -1381,22 +1395,32 @@ def init_game():
         camera_speed = 0
         CURRENT_THEME = THEMES[lvl_config['theme_index']]
         all_platforms.empty()
-        # Full zemin
+        # Full zemin (Sadece Level 15 veya diğer bosslar için çalışacak)
         all_platforms.add(Platform(0, LOGICAL_HEIGHT - 50, LOGICAL_WIDTH, 50, theme_index=lvl_config['theme_index']))
         player_x, player_y = 200.0, float(LOGICAL_HEIGHT - 180)
         
-        # --- KARMA BOSS SEÇİMİ (Hem Level 10 Hem Level 15 İçin Geçerli) ---
+        # Zemin Platformu
+        all_platforms.add(Platform(0, LOGICAL_HEIGHT - 50, LOGICAL_WIDTH, 50, theme_index=lvl_config['theme_index']))
+        
+        # Oyuncu Konumu (Solda)
+        player_x, player_y = 200.0, float(LOGICAL_HEIGHT - 180)
+        
+        # --- BOSS KONUMU GÜNCELLEMESİ (DAHA YAKIN) ---
+        # Boss ekranın ortasından biraz sağda doğsun (Eskiden çok uzaktaydı)
+        boss_spawn_x = LOGICAL_WIDTH - 500  # Oyuncuya daha yakın
+        
+        # --- KARMA BOSS SEÇİMİ ---
         karma = save_manager.get_karma()
         boss = None
         if karma <= -20:
             print(f"BOSS: ARES (LOW KARMA) - Level {current_level_idx}")
-            boss = AresBoss(LOGICAL_WIDTH - 300, LOGICAL_HEIGHT - 200)
+            boss = AresBoss(boss_spawn_x, LOGICAL_HEIGHT - 200) # Yakın Konum
         elif karma >= 20:
             print(f"BOSS: VASIL (HIGH KARMA) - Level {current_level_idx}")
-            boss = VasilBoss(LOGICAL_WIDTH // 2, 100)
+            boss = VasilBoss(boss_spawn_x, 100) # Yakın Konum
         else:
             print(f"BOSS: NEXUS (NEUTRAL KARMA) - Level {current_level_idx}")
-            boss = NexusBoss(LOGICAL_WIDTH - 300, LOGICAL_HEIGHT - 400)
+            boss = NexusBoss(boss_spawn_x, LOGICAL_HEIGHT - 400) # Yakın Konum
         
         if boss: all_enemies.add(boss)
         
@@ -1406,20 +1430,26 @@ def init_game():
             AMBIENT_CHANNEL.play(m, loops=-1)
         except: pass
             
+    # init_game fonksiyonunun içindeki 'else' bloğunu bul ve bununla değiştir:
     else:
-        # Normal bölüm
-        # BASE HIZ ARTIŞI: %25
-        camera_speed = (INITIAL_CAMERA_SPEED * 1.25) * lvl_config['speed_mult']
-        theme_idx = lvl_config['theme_index']
+        # --- NORMAL BÖLÜM MANTIĞI ---
+        
+        # Hız Çarpanını Belirle
+        mult = lvl_config.get('speed_mult', 1.0)
+        
+        # ACİL DÜZELTME: Eğer Bölüm 10 ise ve hız 0 geliyorsa, zorla hızlandır!
+        if current_level_idx == 10 and mult <= 0.1:
+            mult = 1.4
+            
+        camera_speed = (INITIAL_CAMERA_SPEED * 1.25) * mult
+        
+        theme_idx = lvl_config.get('theme_index', 0)
         CURRENT_THEME = THEMES[theme_idx]
         
-        # Oyuncu pozisyonu
         player_x, player_y = 150.0, float(LOGICAL_HEIGHT - 300)
         
-        # Normal müziği - eğer özel müzik tanımlıysa onu kullan
+        # Müzik
         music_file = lvl_config.get('music_file', 'dark_ambient.mp3')
-        # (Level 1 kontrolü silindi, artık settings.py'dan ara1.mp3'ü alacak)
-            
         try:
             current_level_music = load_sound_asset(f"assets/music/{music_file}", generate_ambient_fallback, 1.0)
             AMBIENT_CHANNEL.play(current_level_music, loops=-1)
@@ -1427,14 +1457,33 @@ def init_game():
             current_level_music = generate_ambient_fallback()
             AMBIENT_CHANNEL.play(current_level_music, loops=-1)
         
-        # Normal platformlar
+        # Platformları oluştur
         all_platforms.empty()
         start_plat = Platform(0, LOGICAL_HEIGHT - 50, 400, 50)
         all_platforms.add(start_plat)
         current_right = 400
+        
+        # Level 10 için manuel platform oluşturma (sonsuz döngü riskine karşı güvenli)
         while current_right < LOGICAL_WIDTH + 200:
             add_new_platform()
-            current_right = max(p.rect.right for p in all_platforms)
+            if len(all_platforms) > 0:
+                current_right = max(p.rect.right for p in all_platforms)
+            else:
+                current_right += 200 # Hata olursa döngü sıkışmasın
+
+        # FİZİKSEL BOSS SADECE LEVEL 15'TE OLSUN (Level 10'da sadece arka plan var)
+        if current_level_idx == 15:
+            karma = save_manager.get_karma()
+            boss = None
+            if karma <= -20:
+                boss = AresBoss(LOGICAL_WIDTH - 300, LOGICAL_HEIGHT - 200)
+            elif karma >= 20:
+                boss = VasilBoss(LOGICAL_WIDTH // 2, 100)
+            else:
+                boss = NexusBoss(LOGICAL_WIDTH - 300, LOGICAL_HEIGHT - 400)
+            if boss:
+                boss.ignore_camera_speed = True
+                all_enemies.add(boss)
 
         # 15. BÖLÜM İÇİN BOSS EKLE
         if current_level_idx == 15:
@@ -1880,8 +1929,6 @@ def run_game_loop():
                         is_slamming = False
                         y_velocity = -JUMP_POWER
                         character_state = 'jumping'
-                        if JUMP_SOUND:
-                            FX_CHANNEL.play(JUMP_SOUND)
                         all_vfx.add(ParticleExplosion(px, py, CURRENT_THEME["player_color"], 6))
                         for _ in range(2):
                             all_vfx.add(EnergyOrb(px + random.randint(-10, 10),
@@ -2227,7 +2274,6 @@ def run_game_loop():
                         karma_notification_timer = 40
                         
                         # Ses
-                        if JUMP_SOUND: JUMP_SOUND.play()
                         
                         # ÖNEMLİ: Döngünün altına inme, Dash/Slam hasarını pas geç
                         continue 
