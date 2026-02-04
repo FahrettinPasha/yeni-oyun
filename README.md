@@ -48,7 +48,7 @@ I built this to explore three specific technical challenges:
 
 1.  **Clone the repo:**
     ```bash
-    git clone https://github.com/YOUR_USERNAME/fragmentia.git
+    git clone https://github.com/FahrettinPasha/fragmentia.git
     cd fragmentia
     ```
 
