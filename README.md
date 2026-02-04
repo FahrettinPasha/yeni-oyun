@@ -42,7 +42,7 @@ I built this to explore three specific technical challenges:
 
 ## 📸 Screenshots
 
-*(Place your gameplay screenshots here)*
+*(Eklenecek!)*
 
 ## ⚙️ Installation
 
