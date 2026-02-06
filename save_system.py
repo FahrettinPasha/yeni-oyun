@@ -1,4 +1,3 @@
-# save_system.py (düzeltilmiş)
 import json
 import os
 
@@ -36,8 +35,9 @@ class SaveManager:
                 "high_scores": {}
             },
             "settings": {
-                "sound_volume": 0.7,
-                "music_volume": 0.5
+                "sound_volume": 0.7,  # Genel ses düzeyi
+                "music_volume": 0.5,  # Müzik ses düzeyi
+                "effects_volume": 0.8  # Efekt ses düzeyi
             }
         }
         return default_data
@@ -126,6 +126,7 @@ class SaveManager:
         return False
 
     def update_settings(self, settings_dict):
+        """Ayarları günceller ve kaydeder."""
         if "settings" not in self.data:
             self.data["settings"] = {}
         self.data["settings"].update(settings_dict)
@@ -133,9 +134,11 @@ class SaveManager:
         return True
 
     def get_settings(self):
+        """Ayarları döndürür, eksikleri varsayılandan tamamlar."""
         return self.data.get("settings", {
             "sound_volume": 0.7,
-            "music_volume": 0.5
+            "music_volume": 0.5,
+            "effects_volume": 0.8
         })
 
 # Global instance
