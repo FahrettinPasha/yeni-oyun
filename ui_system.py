@@ -403,46 +403,90 @@ def render_settings_menu(surface, mouse_pos, settings_data):
     
     draw_glitch_text(surface, "SİSTEM AYARLARI", 80, w//2, 80, UI_BORDER_COLOR)
     
-    panel_rect = pygame.Rect(w//2 - 350, 150, 700, 650)
-    draw_cyber_panel(surface, panel_rect, UI_BORDER_COLOR, "TERCİHLER")
+    # Paneli biraz daha genişlettim ki sliderlar rahat sığsın
+    panel_rect = pygame.Rect(w//2 - 375, 140, 750, 700)
+    draw_cyber_panel(surface, panel_rect, UI_BORDER_COLOR, "TERCİHLER & SES")
     
     active_buttons = {}
-    current_y = 200
-    spacing = 75
-    btn_w = 600
+    current_y = 190
+    spacing = 65
+    btn_w = 650
     btn_x = w//2 - btn_w//2
 
+    # --- SES AYARLARI (SLIDERS) ---
+    volume_settings = [
+        ("GENEL SES", "sound_volume", (0, 255, 255)),
+        ("MÜZİK", "music_volume", (255, 0, 255)),
+        ("EFEKTLER", "effects_volume", (0, 255, 100))
+    ]
+
+    label_font = pygame.font.Font(None, 28)
+    
+    for label, key, slider_color in volume_settings:
+        # Etiket
+        draw_text_with_shadow(surface, label, label_font, (btn_x, current_y), WHITE, align='midleft')
+        
+        # Slider Arkaplan (Kanal)
+        slider_rect = pygame.Rect(btn_x + 150, current_y - 5, 450, 12)
+        pygame.draw.rect(surface, (30, 30, 30), slider_rect) # Koyu kanal
+        pygame.draw.rect(surface, (100, 100, 100), slider_rect, 1) # İnce kenarlık
+        
+        # Doluluk Oranı
+        volume = settings_data.get(key, 0.5)
+        fill_width = int(slider_rect.width * volume)
+        pygame.draw.rect(surface, slider_color, (slider_rect.x, slider_rect.y, fill_width, slider_rect.height))
+        
+        # Cyber Handle (Kaydırıcı Başlığı)
+        handle_x = slider_rect.x + fill_width
+        handle_rect = pygame.Rect(handle_x - 5, slider_rect.y - 8, 10, 28)
+        pygame.draw.rect(surface, WHITE, handle_rect)
+        pygame.draw.rect(surface, slider_color, handle_rect, 2)
+        
+        # Etkileşim için buton olarak kaydet (Tıklama kontrolü için)
+        active_buttons[f'slider_{key}'] = slider_rect
+        
+        current_y += spacing
+
+    current_y += 20 # Boşluk bırak
+
+    # --- GÖRÜNTÜ VE SİSTEM AYARLARI ---
+    # Tam Ekran
     mode_text = "MOD: [TAM EKRAN]" if settings_data['fullscreen'] else "MOD: [PENCERE]"
-    btn_mode = pygame.Rect(btn_x, current_y, btn_w, 60)
+    btn_mode = pygame.Rect(btn_x, current_y, btn_w, 50)
     draw_button(surface, btn_mode, mode_text, btn_mode.collidepoint(mouse_pos))
     active_buttons['toggle_fullscreen'] = btn_mode
-    current_y += spacing
+    current_y += spacing - 10
 
+    # Kalite
     q_text = f"EFEKT KALİTESİ: [{settings_data['quality']}]"
-    btn_q = pygame.Rect(btn_x, current_y, btn_w, 60)
+    btn_q = pygame.Rect(btn_x, current_y, btn_w, 50)
     draw_button(surface, btn_q, q_text, btn_q.collidepoint(mouse_pos))
     active_buttons['toggle_quality'] = btn_q
-    current_y += spacing
+    current_y += spacing - 10
     
+    # Çözünürlük
     current_res = AVAILABLE_RESOLUTIONS[settings_data['res_index']]
     res_text = f"ÇÖZÜNÜRLÜK: [{current_res[0]}x{current_res[1]}]"
-    btn_res = pygame.Rect(btn_x, current_y, btn_w, 60)
+    btn_res = pygame.Rect(btn_x, current_y, btn_w, 50)
     draw_button(surface, btn_res, res_text, btn_res.collidepoint(mouse_pos))
     active_buttons['change_resolution'] = btn_res
-    current_y += spacing
+    current_y += spacing - 10
     
-    btn_apply = pygame.Rect(btn_x, current_y, btn_w, 60)
-    draw_button(surface, btn_apply, "AYARLARI UYGULA", btn_apply.collidepoint(mouse_pos), (0, 100, 0))
+    # Uygula
+    btn_apply = pygame.Rect(btn_x, current_y, btn_w, 50)
+    draw_button(surface, btn_apply, "AYARLARI UYGULA", btn_apply.collidepoint(mouse_pos), (0, 80, 0))
     active_buttons['apply_changes'] = btn_apply
     current_y += spacing
 
-    btn_reset = pygame.Rect(btn_x, current_y, btn_w, 60)
+    # Sıfırla
+    btn_reset = pygame.Rect(btn_x, current_y, btn_w, 50)
     draw_button(surface, btn_reset, "!!! İLERLEMEYİ SIFIRLA !!!", 
-               btn_reset.collidepoint(mouse_pos), (100, 0, 0))
+               btn_reset.collidepoint(mouse_pos), (80, 0, 0))
     active_buttons['reset_progress'] = btn_reset
-    current_y += spacing + 20
+    current_y += spacing + 10
 
-    btn_back = pygame.Rect(w//2 - 150, current_y, 300, 60)
+    # Geri
+    btn_back = pygame.Rect(w//2 - 150, current_y, 300, 50)
     draw_button(surface, btn_back, "< GERİ", btn_back.collidepoint(mouse_pos))
     active_buttons['back'] = btn_back
     
