@@ -1,6 +1,6 @@
 import pygame
-
 # --- EKRAN AYARLARI ---
+
 LOGICAL_WIDTH = 1920
 LOGICAL_HEIGHT = 1080
 SCREEN_WIDTH = 1920
@@ -10,6 +10,14 @@ FPS = 60
 AVAILABLE_RESOLUTIONS = [
     (3840, 2160), (1920, 1080), (1280, 720), (854, 480), (640, 360)
 ]
+
+# --- SES AYARLARI ---
+VOLUME_SETTINGS = {
+    "master_volume": 0.7,  # Genel ses seviyesi
+    "music_volume": 0.5,   # Arka plan müzik seviyesi
+    "effects_volume": 0.8  # Efekt sesleri seviyesi
+}
+
 
 # --- AI & GEMINI AYARLARI ---
 GENAI_API_KEY = ""  # Kendi key'ini buraya yazmalısın
