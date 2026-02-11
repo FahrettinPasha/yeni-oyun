@@ -82,7 +82,16 @@ EASY_MODE_LEVELS.update({
     12: {'name': 'Vasi\'nin İzinde', 'goal_score': 75000, 'speed_mult': 1.7, 'theme_index': 1, 'type': 'normal', 'music_file': 'final_ascension.mp3'},
     13: {'name': 'Felsefi Geçit', 'goal_score': 90000, 'speed_mult': 1.8, 'theme_index': 2, 'type': 'normal', 'music_file': 'dark_ambient.mp3'},
     14: {'name': 'Gerçeklik Çatlağı', 'goal_score': 110000, 'speed_mult': 1.9, 'theme_index': 3, 'type': 'normal', 'music_file': 'synthwave.mp3'},
-    15: {'name': 'SON KOŞU', 'goal_score': 150000, 'speed_mult': 2.5, 'theme_index': 1, 'type': 'normal', 'music_file': 'final_boss.mp3'}
+    15: { 
+        'name': 'NİHAİ HAKİKAT',
+        'goal_score': 100000,
+        'theme_index': 2,
+        'speed_mult': 1.4,
+        'desc': 'Zaman dolana kadar dayan.',
+        'music_file': 'boss2.mp3',
+        'type': 'scrolling_boss',
+        'no_enemies': True
+    }
 })
 
 # --- BÖLÜM 10 AYARI ---
@@ -122,16 +131,24 @@ from story_system import StoryManager
 
 # --- EKSİK DOSYA YERİNE GEÇEN KODLAR BAŞLANGICI ---
 class RestAreaManager:
-    def __init__(self): self.active_area = None
-    def update(self, pos): pass
+    def __init__(self): 
+        self.active_area = None
+    def update(self, pos): 
+        pass
 
-class NexusHub: pass
-class PhilosophicalCore: pass
+class NexusHub: 
+    pass
+
+class PhilosophicalCore: 
+    pass
 
 class RealityShiftSystem:
-    def __init__(self): self.current_reality = 0
-    def get_current_effects(self): return {}
-    def get_visual_effect(self): return {}
+    def __init__(self): 
+        self.current_reality = 0
+    def get_current_effects(self): 
+        return {}
+    def get_visual_effect(self): 
+        return {}
 
 class TimeLayerSystem:
     def __init__(self): 
@@ -139,26 +156,35 @@ class TimeLayerSystem:
         self.eras = {'present': {}}
 
 class CombatPhilosophySystem:
-    def create_philosophical_combo(self, seq): return None
+    def create_philosophical_combo(self, seq): 
+        return None
 
-class LivingSoundtrack: pass
+class LivingSoundtrack: 
+    pass
+
 class EndlessFragmentia:
-    def __init__(self): self.current_mode = 'default'
+    def __init__(self): 
+        self.current_mode = 'default'
 
 class ReactiveFragmentia:
-    def update_world_based_on_player(self, ctx, hist): pass
+    def update_world_based_on_player(self, ctx, hist): 
+        pass
 
 class LivingNPC:
     def __init__(self, id, variant):
         self.x, self.y = 0, 0
-    def daily_update(self, t, d): pass
-    def draw(self, s, o): pass
+    def daily_update(self, t, d): 
+        pass
+    def draw(self, s, o): 
+        pass
 
 class FragmentiaDistrict:
-    def __init__(self, id, size): pass
+    def __init__(self, id, size): 
+        pass
 
 class PhilosophicalTitan:
-    def __init__(self, name, type, diff): pass
+    def __init__(self, name, type, diff): 
+        pass
 # --- EKSİK DOSYA YERİNE GEÇEN KODLAR BİTİŞİ ---
 
 # --- YENİ: AI CUTSCENE IMPORT ---
@@ -193,6 +219,22 @@ def trigger_guardian_interruption():
     # 4. Sonraki Adım
     # Diyalog bitince ne olacak? Şimdilik oyunu bitirebilir veya menüye atabiliriz.
     # story_manager'a bir sonraki state'i bildirmek gerekebilir ama şimdilik manuel yöneteceğiz.
+
+# --- SES AYARLARI GİRİŞ İŞLEME FONKSİYONU ---
+def handle_settings_input(events, settings_data, mouse_pos):
+    """Kullanıcıdan ses kaydırıcılarının girişlerini işlemek"""
+    mouse_x, mouse_y = mouse_pos
+    for event in events:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            for i, key in enumerate(["sound_volume", "music_volume", "effects_volume"]):
+                slider_rect = pygame.Rect(350, 170 + i * 70, 300, 10)
+
+                if slider_rect.collidepoint(mouse_x, mouse_y):
+                    relative_x = mouse_x - slider_rect.x
+                    settings_data[key] = max(0.0, min(1.0, relative_x / slider_rect.width))
+
+        elif event.type == pygame.MOUSEBUTTONUP:
+            save_manager.update_settings(settings_data)
 
 # --- 1. SİSTEM VE EKRAN AYARLARI ---
 pygame.init()
@@ -280,7 +322,7 @@ class NexusBoss(pygame.sprite.Sprite):
         self.phase = 1
 
     def update(self, camera_speed, dt, player_pos):
-        if not hasattr(self, 'ignore_camera_speed') or not self.ignore_camera_speed:
+        if not getattr(self, 'ignore_camera_speed', False):
             self.x -= camera_speed
         self.fire_timer += 1
         if self.fire_timer >= BOSS_FIRE_RATE:
@@ -345,7 +387,7 @@ class AresBoss(pygame.sprite.Sprite):
         self.phase = 1
 
     def update(self, camera_speed, dt, player_pos):
-        if not hasattr(self, 'ignore_camera_speed') or not self.ignore_camera_speed:
+        if not getattr(self, 'ignore_camera_speed', False):
             self.x -= camera_speed
         self.fire_timer += 1
         if self.fire_timer >= BOSS_FIRE_RATE:
@@ -406,7 +448,7 @@ class VasilBoss(pygame.sprite.Sprite):
         self.phase = 1
 
     def update(self, camera_speed, dt, player_pos):
-        if not hasattr(self, 'ignore_camera_speed') or not self.ignore_camera_speed:
+        if not getattr(self, 'ignore_camera_speed', False):
             self.x -= camera_speed
         self.fire_timer += 1
         if self.fire_timer >= BOSS_FIRE_RATE:
@@ -722,7 +764,10 @@ game_settings = {
     'quality': 'HIGH',
     'res_index': 1,
     'fps_limit': 60,
-    'fps_index': 1
+    'fps_index': 1,
+    'sound_volume': 1.0,
+    'music_volume': 1.0,
+    'effects_volume': 1.0
 }
 current_fps = 60
 
@@ -910,7 +955,8 @@ def add_new_platform(start_x=None):
         safe_start_x = new_plat.rect.right + safe_gap
         safe_width = random.randint(PLATFORM_MIN_WIDTH, PLATFORM_MAX_WIDTH)
         possible_heights = [h for h in PLATFORM_HEIGHTS if abs(h - y) <= VERTICAL_GAP]
-        if not possible_heights: possible_heights = PLATFORM_HEIGHTS
+        if not possible_heights: 
+            possible_heights = PLATFORM_HEIGHTS
         safe_y = random.choice(possible_heights)
         
         safe_plat = Platform(safe_start_x, safe_y, safe_width, 50)
@@ -1324,37 +1370,13 @@ def init_game():
 
     # --- EKSİK OLAN SATIR BU! (Bunu ekle) ---
     lvl_config = EASY_MODE_LEVELS.get(current_level_idx, EASY_MODE_LEVELS[1])
-    # ----------------------------------------
 
-    # ... (Kodun geri kalanı aynı şekilde devam etsin) ...
-    # --- DÜZELTME: DEĞİŞKENLERİ SADECE GEREKİRSE SIFIRLA ---
-    
     # Eğer normal bölümlerdeysek (1-10), her şeyi sıfırla.
     # Ama Gizli Yola (11+) girdiysek, Tılsım veya Vasi bizde kalmalı!
     if current_level_idx < 11:
         has_talisman = False
         vasil_companion = None
         has_revived_this_run = False
-    
-    # YENİ: Level 15 değişkenlerini sıfırla
-    if current_level_idx == 15:
-        karma = save_manager.get_karma()
-        boss = None
-        
-        # Boss'u ekranın sağında, havada veya yerde konumlandır
-        boss_spawn_x = LOGICAL_WIDTH - 300 
-        
-        if karma <= -20:
-            boss = AresBoss(boss_spawn_x, LOGICAL_HEIGHT - 200)
-        elif karma >= 20:
-            boss = VasilBoss(LOGICAL_WIDTH // 2, 100) # Vasi havada dursun
-        else:
-            boss = NexusBoss(boss_spawn_x, LOGICAL_HEIGHT - 400)
-        
-        if boss:
-            # ÖNEMLİ: Boss kamera ile kayıp gitmesin, ekranda sabit kalsın!
-            boss.ignore_camera_speed = True 
-            all_enemies.add(boss)
     
     # Varsayılan değerler
     active_player_speed = PLAYER_SPEED
@@ -1392,45 +1414,48 @@ def init_game():
             AMBIENT_CHANNEL.play(current_level_music, loops=-1)
             
     elif lvl_config.get('type') == 'boss_fight':
-        camera_speed = 0
-        CURRENT_THEME = THEMES[lvl_config['theme_index']]
-        all_platforms.empty()
-        # Full zemin (Sadece Level 15 veya diğer bosslar için çalışacak)
-        all_platforms.add(Platform(0, LOGICAL_HEIGHT - 50, LOGICAL_WIDTH, 50, theme_index=lvl_config['theme_index']))
-        player_x, player_y = 200.0, float(LOGICAL_HEIGHT - 180)
+        # Bu blok aynı kalıyor...
+        pass
+    elif lvl_config.get('type') == 'scrolling_boss':
+        print("SCROLLING BOSS BÖLÜMÜ BAŞLATILIYOR...")
         
-        # Zemin Platformu
-        all_platforms.add(Platform(0, LOGICAL_HEIGHT - 50, LOGICAL_WIDTH, 50, theme_index=lvl_config['theme_index']))
-        
-        # Oyuncu Konumu (Solda)
-        player_x, player_y = 200.0, float(LOGICAL_HEIGHT - 180)
-        
-        # --- BOSS KONUMU GÜNCELLEMESİ (DAHA YAKIN) ---
-        # Boss ekranın ortasından biraz sağda doğsun (Eskiden çok uzaktaydı)
-        boss_spawn_x = LOGICAL_WIDTH - 500  # Oyuncuya daha yakın
-        
-        # --- KARMA BOSS SEÇİMİ ---
-        karma = save_manager.get_karma()
-        boss = None
-        if karma <= -20:
-            print(f"BOSS: ARES (LOW KARMA) - Level {current_level_idx}")
-            boss = AresBoss(boss_spawn_x, LOGICAL_HEIGHT - 200) # Yakın Konum
-        elif karma >= 20:
-            print(f"BOSS: VASIL (HIGH KARMA) - Level {current_level_idx}")
-            boss = VasilBoss(boss_spawn_x, 100) # Yakın Konum
-        else:
-            print(f"BOSS: NEXUS (NEUTRAL KARMA) - Level {current_level_idx}")
-            boss = NexusBoss(boss_spawn_x, LOGICAL_HEIGHT - 400) # Yakın Konum
-        
-        if boss: all_enemies.add(boss)
+        # 1. Normal bölüm gibi kamerayı ve platformları başlat
+        mult = lvl_config.get('speed_mult', 1.0)
+        camera_speed = (INITIAL_CAMERA_SPEED * 1.25) * mult
+        theme_idx = lvl_config.get('theme_index', 0)
+        CURRENT_THEME = THEMES[theme_idx]
+        player_x, player_y = 150.0, float(LOGICAL_HEIGHT - 300)
         
         # Müzik
+        music_file = lvl_config.get('music_file', 'dark_ambient.mp3')
         try:
-            m = load_sound_asset(f"assets/music/{lvl_config.get('music_file')}", generate_ambient_fallback, 1.0)
-            AMBIENT_CHANNEL.play(m, loops=-1)
-        except: pass
-            
-    # init_game fonksiyonunun içindeki 'else' bloğunu bul ve bununla değiştir:
+            current_level_music = load_sound_asset(f"assets/music/{music_file}", generate_ambient_fallback, 1.0)
+            AMBIENT_CHANNEL.play(current_level_music, loops=-1)
+        except: 
+            pass
+        
+        # Platformları oluştur
+        all_platforms.empty()
+        start_plat = Platform(0, LOGICAL_HEIGHT - 50, 400, 50)
+        all_platforms.add(start_plat)
+        
+        # 2. KARMA'ya göre BOSS'u oluştur ve ekle
+        karma = save_manager.get_karma()
+        boss = None
+        # Boss ekranın sağında, oyuncuyu kovalayacak şekilde doğsun
+        boss_spawn_x = LOGICAL_WIDTH - 300 
+        
+        if karma <= -20:
+            boss = AresBoss(boss_spawn_x, LOGICAL_HEIGHT - 200)
+        elif karma >= 20:
+            boss = VasilBoss(boss_spawn_x, 100) # Vasi havada
+        else:
+            boss = NexusBoss(boss_spawn_x, LOGICAL_HEIGHT - 400)
+        
+        if boss:
+            boss.ignore_camera_speed = True  # <--- BU SATIRI MUTLAKA EKLE
+            all_enemies.add(boss)
+            print(f"Boss oluşturuldu: {boss.__class__.__name__}")
     else:
         # --- NORMAL BÖLÜM MANTIĞI ---
         
@@ -1483,20 +1508,6 @@ def init_game():
                 boss = NexusBoss(LOGICAL_WIDTH - 300, LOGICAL_HEIGHT - 400)
             if boss:
                 boss.ignore_camera_speed = True
-                all_enemies.add(boss)
-
-        # 15. BÖLÜM İÇİN BOSS EKLE
-        if current_level_idx == 15:
-            karma = save_manager.get_karma()
-            boss = None
-            if karma <= -20:
-                boss = AresBoss(LOGICAL_WIDTH - 300, LOGICAL_HEIGHT - 200)
-            elif karma >= 20:
-                boss = VasilBoss(LOGICAL_WIDTH // 2, 100)
-            else:
-                boss = NexusBoss(LOGICAL_WIDTH - 300, LOGICAL_HEIGHT - 400)
-            if boss:
-                boss.ignore_camera_speed = True  # Boss kamera ile hareket etmesin
                 all_enemies.add(boss)
     
     # Boss HP Artır (Level 15 için)
@@ -1612,6 +1623,7 @@ def run_game_loop():
     while running:
         current_time = pygame.time.get_ticks()
         dt = (current_time - last_time) / 1000.0
+        dt = min(dt, 1.0 / 30.0) 
         last_time = current_time
         time_ms = current_time
         frame_count += 1
@@ -1628,8 +1640,15 @@ def run_game_loop():
                  for sprite in sprites[:20]:
                      sprite.kill()
 
+        # Olayları bir listeye al
+        events = pygame.event.get()
+        
+        # SETTINGS modunda ses kaydırıcıları için giriş işleme
+        if GAME_STATE == 'SETTINGS':
+            handle_settings_input(events, game_settings, mouse_pos)
+        
         # Olay kontrol döngüsü
-        for event in pygame.event.get():
+        for event in events:
             if event.type == pygame.QUIT:
                 running = False
                 
@@ -1734,7 +1753,8 @@ def run_game_loop():
                             cinematic_assets['scenario'] = scenario
                             
                             # 3. Müziği durdur ve sahneyi oynat
-                            if AMBIENT_CHANNEL.get_busy(): AMBIENT_CHANNEL.stop()
+                            if AMBIENT_CHANNEL.get_busy(): 
+                                AMBIENT_CHANNEL.stop()
                             
                             scene = AICutscene(screen, clock, cinematic_assets)
                             scene.run() # Bu işlem bitene kadar kod burada bekler
@@ -2015,7 +2035,8 @@ def run_game_loop():
             
             # Level Buff'ı (Varsayılan)
             buff_stacks = (current_level_idx - 1) // 3
-            if buff_stacks > 2: buff_stacks = 2
+            if buff_stacks > 2: 
+                buff_stacks = 2
             
             base_speed_mult = 1.0 + (0.25 * buff_stacks)
             base_cd_mult = 0.5 ** buff_stacks
@@ -2063,7 +2084,8 @@ def run_game_loop():
                     camera_speed = min(MAX_CAMERA_SPEED, camera_speed + SPEED_INCREMENT_RATE * frame_mul)
                     # Skoru sadece normal oyunda arttır
                     score_gain = 0.1 * camera_speed * frame_mul
-                    if is_super_mode: score_gain *= 40
+                    if is_super_mode: 
+                        score_gain *= 40
                     score += score_gain
 
             old_x, old_y = player_x, player_y
@@ -2126,7 +2148,7 @@ def run_game_loop():
                 for enemy in enemy_hits_aoe:
                     enemy.kill()
                     score += 500
-                        # KARMA CEZASI (DASH KILL)
+                    # KARMA CEZASI (DASH KILL)
                     save_manager.update_karma(-10)
                     player_karma = save_manager.get_karma()
                     enemies_killed_current_level += 1
@@ -2237,110 +2259,102 @@ def run_game_loop():
             
             for enemy in enemy_hits:
                 
-                # --- ÇARPIŞMA DÖNGÜSÜ ---
-                PLAYER_W, PLAYER_H = 30, 30
-                player_rect = pygame.Rect(int(player_x), int(player_y), PLAYER_W, PLAYER_H)
-                
-                dummy_player = type('',(object,),{'rect':player_rect})()
-                enemy_hits = pygame.sprite.spritecollide(dummy_player, all_enemies, False)
-                
-                for enemy in enemy_hits:
+                # --- SENARYO 1: KURTULUŞ MODU (TILSIM VARSA) ---
+                if has_talisman:
+                    # Dash atıyor olsan, Slam vuruyor olsan bile burası çalışır.
+                    # Düşmanı öldürme kodu yerine "Kurtarma" kodu çalışır.
                     
-                    # --- SENARYO 1: KURTULUŞ MODU (TILSIM VARSA) ---
-                    if has_talisman:
-                        # Dash atıyor olsan, Slam vuruyor olsan bile burası çalışır.
-                        # Düşmanı öldürme kodu yerine "Kurtarma" kodu çalışır.
-                        
-                        enemy.kill() # Fiziksel olarak sil
-                        
-                        # Görsel Efekt: Ruh Yükselişi
-                        saved_soul = SavedSoul(enemy.rect.centerx, enemy.rect.centery)
-                        all_vfx.add(saved_soul)
-                        
-                        # Altın Patlama
-                        all_vfx.add(ParticleExplosion(enemy.rect.centerx, enemy.rect.centery, (255, 215, 0), 20))
-                        all_vfx.add(Shockwave(enemy.rect.centerx, enemy.rect.centery, (255, 255, 200), max_radius=120, width=5))
-                        
-                        # --- KARMA VE SKOR ARTIŞI ---
-                        save_manager.update_karma(25) # HER KURTARIŞ KARMAYI ARTIRIR
-                        save_manager.add_saved_soul(1)  # <-- BU SATIRI EKLE
-                        score += 1000
-                        
-                        # Sayaç: Burada "killed" değişkenini artırıyoruz ama UI'da bunu "Kurtarılan" olarak göstereceğiz
-                        enemies_killed_current_level += 1 
-                        
-                        # Bildirim
-                        karma_notification_text = "RUH KURTARILDI! (+25)"
-                        karma_notification_timer = 40
-                        
-                        # Ses
-                        
-                        # ÖNEMLİ: Döngünün altına inme, Dash/Slam hasarını pas geç
-                        continue 
-
-                    # --- SENARYO 2: NORMAL OYNANIŞ (TILSIM YOKSA) ---
+                    enemy.kill() # Fiziksel olarak sil
                     
-                    # Boss mermisi her türlü öldürür (Tılsım mermiye işlemiyorsa)
-                    if isinstance(enemy, EnemyBullet):
-                        GAME_STATE = 'GAME_OVER'
-                        enemy.kill()
-                        continue
+                    # Görsel Efekt: Ruh Yükselişi
+                    saved_soul = SavedSoul(enemy.rect.centerx, enemy.rect.centery)
+                    all_vfx.add(saved_soul)
+                    
+                    # Altın Patlama
+                    all_vfx.add(ParticleExplosion(enemy.rect.centerx, enemy.rect.centery, (255, 215, 0), 20))
+                    all_vfx.add(Shockwave(enemy.rect.centerx, enemy.rect.centery, (255, 255, 200), max_radius=120, width=5))
+                    
+                    # --- KARMA VE SKOR ARTIŞI ---
+                    save_manager.update_karma(25) # HER KURTARIŞ KARMAYI ARTIRIR
+                    save_manager.add_saved_soul(1)  # <-- BU SATIRI EKLE
+                    score += 1000
+                    
+                    # Sayaç: Burada "killed" değişkenini artırıyoruz ama UI'da bunu "Kurtarılan" olarak göstereceğiz
+                    enemies_killed_current_level += 1 
+                    
+                    # Bildirim
+                    karma_notification_text = "RUH KURTARILDI! (+25)"
+                    karma_notification_timer = 40
+                    
+                    # Ses
+                    
+                    # ÖNEMLİ: Döngünün altına inme, Dash/Slam hasarını pas geç
+                    continue 
 
-                    # Dash veya Slam ile Saldırı
-                    if is_dashing or is_slamming or is_super_mode:
-                        enemy.kill()
-                        score += 500
-                            
-                        if not is_super_mode: 
-                            # Öldürdüğün için Karma Cezası
-                            save_manager.update_karma(-10)
-                            enemies_killed_current_level += 1
-                            karma_notification_text = "KARMA DÜŞTÜ!"
-                            karma_notification_timer = 60
+                # --- SENARYO 2: NORMAL OYNANIŞ (TILSIM YOKSA) ---
+                
+                # Boss mermisi her türlü öldürür (Tılsım mermiye işlemiyorsa)
+                if isinstance(enemy, EnemyBullet):
+                    GAME_STATE = 'GAME_OVER'
+                    enemy.kill()
+                    continue
+
+                # Dash veya Slam ile Saldırı
+                if is_dashing or is_slamming or is_super_mode:
+                    enemy.kill()
+                    score += 500
                         
-                        screen_shake = 15
-                        if EXPLOSION_SOUND: FX_CHANNEL.play(EXPLOSION_SOUND)
-                        all_vfx.add(ParticleExplosion(enemy.rect.centerx, enemy.rect.centery, CURSED_PURPLE, 20))
-                        all_vfx.add(Shockwave(enemy.rect.centerx, enemy.rect.centery, GLITCH_BLACK, max_radius=80, width=5))
-                        pygame.time.delay(30)
+                    if not is_super_mode: 
+                        # Öldürdüğün için Karma Cezası
+                        save_manager.update_karma(-10)
+                        enemies_killed_current_level += 1
+                        karma_notification_text = "KARMA DÜŞTÜ!"
+                        karma_notification_timer = 60
+                    
+                    screen_shake = 15
+                    if EXPLOSION_SOUND: 
+                        FX_CHANNEL.play(EXPLOSION_SOUND)
+                    all_vfx.add(ParticleExplosion(enemy.rect.centerx, enemy.rect.centery, CURSED_PURPLE, 20))
+                    all_vfx.add(Shockwave(enemy.rect.centerx, enemy.rect.centery, GLITCH_BLACK, max_radius=80, width=5))
+                    pygame.time.delay(30)
+                    
+                else:
+                    # --- YENİ: KARMA DİRİLİŞİ (DIRILME HAKKI) ---
+                    if player_karma <= -90 and not has_revived_this_run:
+                        has_revived_this_run = True # Hakkı tüket
+                        karma_notification_text = "KARANLIK DİRİLİŞ AKTİF!"
+                        karma_notification_timer = 120
                         
+                        # Ekranı temizle (Şok Dalgası)
+                        screen_shake = 30
+                        all_vfx.add(ScreenFlash((0, 0, 0), 150, 20)) # Siyah flaş
+                        
+                        # Tüm düşmanları yok et
+                        for e in all_enemies:
+                            e.kill()
+                            all_vfx.add(ParticleExplosion(e.rect.centerx, e.rect.centery, CURSED_RED, 20))
+                        
+                        # Düşmanları geriye it (Dalga oluştur)
+                        active_damage_waves.append({'x': player_x + 15, 'y': player_y + 15, 'r': 10, 'max_r': 500, 'speed': 40})
+                        
+                        # Oyuncuyu biraz yukarı at
+                        y_velocity = -15
+                        is_jumping = True
+                        
+                        print("Karanlık Diriliş Aktifleşti!")
                     else:
-                        # --- YENİ: KARMA DİRİLİŞİ (DIRILME HAKKI) ---
-                        if player_karma <= -90 and not has_revived_this_run:
-                            has_revived_this_run = True # Hakkı tüket
-                            karma_notification_text = "KARANLIK DİRİLİŞ AKTİF!"
-                            karma_notification_timer = 120
-                            
-                            # Ekranı temizle (Şok Dalgası)
-                            screen_shake = 30
-                            all_vfx.add(ScreenFlash((0, 0, 0), 150, 20)) # Siyah flaş
-                            
-                            # Tüm düşmanları yok et
-                            for e in all_enemies:
-                                e.kill()
-                                all_vfx.add(ParticleExplosion(e.rect.centerx, e.rect.centery, CURSED_RED, 20))
-                            
-                            # Düşmanları geriye it (Dalga oluştur)
-                            active_damage_waves.append({'x': player_x + 15, 'y': player_y + 15, 'r': 10, 'max_r': 500, 'speed': 40})
-                            
-                            # Oyuncuyu biraz yukarı at
-                            y_velocity = -15
-                            is_jumping = True
-                            
-                            print("Karanlık Diriliş Aktifleşti!")
+                        # Normal ölüm
+                        # YENİ: Level 10'da ölürse Limbo'ya gönder
+                        if current_level_idx == 10:
+                            init_limbo()
+                            GAME_STATE = 'PLAYING'
+                            if npcs:
+                                start_npc_conversation(npcs[0])
                         else:
-                            # Normal ölüm
-                            # YENİ: Level 10'da ölürse Limbo'ya gönder
-                            if current_level_idx == 10:
-                                init_limbo()
-                                GAME_STATE = 'PLAYING'
-                                if npcs:
-                                    start_npc_conversation(npcs[0])
-                            else:
-                                GAME_STATE = 'GAME_OVER'
-                                high_score = max(high_score, int(score))
-                                AMBIENT_CHANNEL.stop()
-                                all_vfx.add(ParticleExplosion(player_x, player_y, CURSED_RED, 30))
+                            GAME_STATE = 'GAME_OVER'
+                            high_score = max(high_score, int(score))
+                            AMBIENT_CHANNEL.stop()
+                            all_vfx.add(ParticleExplosion(player_x, player_y, CURSED_RED, 30))
             
             move_rect = pygame.Rect(int(player_x), int(min(old_y, player_y)), PLAYER_W, int(abs(player_y - old_y)) + PLAYER_H)
             collided_platforms = pygame.sprite.spritecollide(type('',(object,),{'rect':move_rect})(), all_platforms, False)
@@ -2445,6 +2459,11 @@ def run_game_loop():
                     cinematic_assets = asset_paths.copy()
                     cinematic_assets['scenario'] = 'FINAL_MEMORY'
                     AICutscene(screen, clock, cinematic_assets).run()
+                    
+                    # --- ÇÖZÜM BU SATIR! ---
+                    last_time = pygame.time.get_ticks() # Zaman sayacını sıfırla
+                    # -------------------------
+
                     level_15_timer = 0
                     try: AMBIENT_CHANNEL.play(load_sound_asset("assets/music/final_boss.mp3", generate_ambient_fallback, 1.0), loops=-1)
                     except: pass
@@ -2462,7 +2481,8 @@ def run_game_loop():
                         finisher_active = True
                         finisher_state_timer = 0.0
                         finisher_type = 'GOOD' if player_karma >= 0 else 'BAD'
-                        if AMBIENT_CHANNEL.get_busy(): AMBIENT_CHANNEL.stop()
+                        if AMBIENT_CHANNEL.get_busy(): 
+                            AMBIENT_CHANNEL.stop()
                         screen_shake = 50
                         print(f"FİNAL SEKANS BAŞLADI: {finisher_type}")
 
@@ -2609,6 +2629,26 @@ def run_game_loop():
                         # Ölmediysek bildirim göster
                         karma_notification_text = "İRADE HASAR ALDI!"
                         karma_notification_timer = 40
+
+            # --- BOSS TAKİP MANTIĞI (DÜZELTİLMİŞ) ---
+            lvl_config = EASY_MODE_LEVELS.get(current_level_idx, {})
+            if lvl_config.get('type') == 'scrolling_boss' or current_level_idx == 15:
+                # Boss'u bul
+                boss_obj = None
+                for e in all_enemies:
+                    if isinstance(e, (NexusBoss, AresBoss, VasilBoss)):
+                        boss_obj = e
+                        break
+                
+                # Boss'u oyuncunun sağında SABİT bir mesafede tut
+                if boss_obj:
+                    # Oyuncunun 550 piksel sağında dursun
+                    target_x = player_x + 550
+                    
+                    # Boss'un X koordinatını direkt kilitliyoruz.
+                    boss_obj.x = target_x
+                    boss_obj.rect.x = int(boss_obj.x)
+
             # --- BÖLÜM HEDEFİ KONTROLÜ ---
             if GAME_STATE == 'PLAYING' and lvl_config.get('type') != 'rest_area':
                 base_goal = EASY_MODE_LEVELS.get(current_level_idx, EASY_MODE_LEVELS[1])['goal_score']
@@ -2628,20 +2668,16 @@ def run_game_loop():
                     save_manager.unlock_next_level('easy_mode', current_level_idx)
                     save_manager.update_high_score('easy_mode', current_level_idx, score)
 
-            all_platforms.update(camera_speed * frame_mul)
-            # FIX: Oyuncu pozisyonunu düşmanlara gönder
+                all_platforms.update(camera_speed * frame_mul)
+            
             all_enemies.update(camera_speed * frame_mul, dt, (player_x, player_y))
-
-            if current_level_idx in [10, 15]:
-                for e in all_enemies:
-                    if isinstance(e, (NexusBoss, AresBoss, VasilBoss)):w
             
             # --- MERMİ KUYRUĞU İŞLEME (Spawn Queue) ---
             for enemy in all_enemies:
                 if hasattr(enemy, 'spawn_queue') and enemy.spawn_queue:
                     for projectile in enemy.spawn_queue:
                         all_enemies.add(projectile)
-                    enemy.spawn_queue = [] # Kuyruğu temizle
+                enemy.spawn_queue = [] # Kuyruğu temizle
             
             # --- BOSS ÖLÜM KONTROLÜ ---
             if lvl_config.get('type') == 'boss_fight' or current_level_idx == 15:
@@ -2657,7 +2693,8 @@ def run_game_loop():
                     # Cutscene Başlatma Kodları
                     score += 150000
                     
-                    if AMBIENT_CHANNEL.get_busy(): AMBIENT_CHANNEL.stop()
+                    if AMBIENT_CHANNEL.get_busy(): 
+                        AMBIENT_CHANNEL.stop()
                     
                     final_karma = save_manager.get_karma()
                     ending_scenario = "GOOD_ENDING" if final_karma >= 0 else "BAD_ENDING"
@@ -2691,6 +2728,7 @@ def run_game_loop():
                 if current_level_idx <= 15:
                     if len(all_platforms) > 0 and max(p.rect.right for p in all_platforms) < LOGICAL_WIDTH + 100:
                         add_new_platform()
+            
             # ##############################
             # ÖLÜM KONTROLÜ - EN ÖNEMLİ KISIM
             # ##############################
@@ -2902,7 +2940,8 @@ def run_game_loop():
                 font = pygame.font.Font(None, 40)
                 color = (255, 50, 50) if "DÜŞTÜ" in karma_notification_text else (0, 255, 100)
                 # Özel durum: Diriliş
-                if "DİRİLİŞ" in karma_notification_text: color = (200, 50, 200)
+                if "DİRİLİŞ" in karma_notification_text: 
+                    color = (200, 50, 200)
                 
                 draw_text_with_shadow(game_canvas, karma_notification_text, font, 
                                      (LOGICAL_WIDTH//2, LOGICAL_HEIGHT//2 - 100), color, align="center")
