@@ -1,8 +1,8 @@
 {
-    "karma": 0,
-    "saved_souls": 3,
+    "karma": -110,
+    "saved_souls": 0,
     "easy_mode": {
-        "unlocked_levels": 15,
+        "unlocked_levels": 12,
         "completed_levels": [
             1,
             2,
@@ -11,28 +11,28 @@
             6,
             7,
             9,
-            11,
-            12,
-            13,
-            14
+            11
         ],
         "high_scores": {
-            "1": 777,
-            "2": 1364,
-            "3": 2120,
-            "5": 3001,
-            "6": 4525,
-            "7": 6786,
-            "9": 9053,
-            "11": 45400,
-            "12": 56291,
-            "13": 67543,
-            "14": 82515,
-            "15": 150063
+            "1": 709,
+            "2": 900,
+            "3": 1996,
+            "5": 3312,
+            "6": 4500,
+            "7": 7124,
+            "9": 9001,
+            "11": 53106,
+            "12": 2747
         }
     },
     "settings": {
-        "sound_volume": 0.7,
-        "music_volume": 0.5
+        "sound_volume": 1.0,
+        "music_volume": 1.0,
+        "effects_volume": 1.0,
+        "fullscreen": true,
+        "quality": "LOW",
+        "res_index": 1,
+        "fps_limit": 60,
+        "fps_index": 1
     }
 }
