@@ -151,12 +151,12 @@ EASY_MODE_LEVELS = {
     },
     10: {
         'name': 'YARGI GÜNÜ KOŞUSU',
-        'goal_score': 100000, # Skor önemsiz, Boss ölünce biter
-        'speed_mult': 1.4,    # <--- HIZ VERDİK (Platformlar aksın)
-        'theme_index': 1,     # Kule Teması
-        'type': 'normal',     # <--- 'boss_fight' YAZMA! Düz zemin olmasın.
-        'music_file': 'boss1.mp3',
-        'no_enemies': True    # <--- Rastgele düşman yok, sadece Boss.
+        'goal_score': 999999, # Skorla bitmesin, boss ölünce bitsin
+        'speed_mult': 1.3,    # HIZLI AKIŞ (Kamera artık durmuyor!)
+        'theme_index': 1,     # Kule Teması (Kırmızı/Siyah)
+        'type': 'scrolling_boss', # YENİ TİP: Bu, normal boss_fight'tan farklı.
+        'music_file': 'final_boss.mp3',
+        'no_enemies': True   # Normal düşmanlar da gelsin! (İstersen True yapabilirsin)
     },
     
     # --- GİZLİ BÖLÜMLER (İKİNCİ YARI) ---
