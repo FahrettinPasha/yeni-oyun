@@ -33,7 +33,6 @@ def draw_cyber_panel(surface, rect, color, title=""):
                                 title_width + 20, title_height + 10)
         pygame.draw.rect(surface, color, title_rect)
         pygame.draw.rect(surface, WHITE, title_rect, 2)
-        # Başlık için MidLeft hizalama kullan
         draw_text_with_shadow(surface, title, title_font, 
                              (title_rect.x + 10, title_rect.centery), (0, 0, 0), align='midleft')
 
@@ -67,7 +66,6 @@ def draw_button(surface, rect, text, is_hovered, color_theme=BUTTON_COLOR, locke
     font = pygame.font.Font(None, 30)
     if not locked:
         text_col = WHITE if is_hovered else BUTTON_TEXT_COLOR
-    # Buton metni ortalanır
     draw_text_with_shadow(surface, text, font, draw_rect.center, text_col)
 
 # --- SAHNE FONKSİYONLARI ---
@@ -131,7 +129,6 @@ def render_chat_interface(surface, story_manager):
     
     line_height = 40
     for i, line in enumerate(lines):
-        # Sohbet metni sola yaslanmalı
         draw_text_with_shadow(surface, line, font, 
                              (text_x, text_y + i * line_height), TEXT_COLOR, align='topleft')
 
@@ -178,26 +175,21 @@ def render_cheat_terminal(surface, input_text, status_msg):
     """Hile Terminali Ekranı"""
     w, h = surface.get_width(), surface.get_height()
     
-    # Arkaplan Karartma
     overlay = pygame.Surface((w, h), pygame.SRCALPHA)
     overlay.fill((0, 20, 10, 230))
     surface.blit(overlay, (0, 0))
     
-    # Terminal Kutusu
     term_width = 800
     term_height = 400
     term_rect = pygame.Rect(w//2 - term_width//2, h//2 - term_height//2, term_width, term_height)
     
     draw_cyber_panel(surface, term_rect, (0, 255, 0), "ROOT_ACCESS_TERMINAL v1.0")
     
-    # Terminal İçeriği
     font_term = pygame.font.Font(None, 35)
     
-    # Prompt
     draw_text_with_shadow(surface, "C:\\NEXUS\\SYSTEM> HİLE KODU GİRİN:", font_term, 
                          (term_rect.x + 30, term_rect.y + 60), (0, 255, 0), align='topleft')
     
-    # Girilen Metin
     input_box = pygame.Rect(term_rect.x + 30, term_rect.y + 110, term_width - 60, 50)
     pygame.draw.rect(surface, (0, 50, 0), input_box)
     pygame.draw.rect(surface, (0, 255, 0), input_box, 2)
@@ -206,12 +198,10 @@ def render_cheat_terminal(surface, input_text, status_msg):
     draw_text_with_shadow(surface, f"> {input_text}{cursor}", font_term,
                          (input_box.x + 10, input_box.centery), (200, 255, 200), align='midleft')
     
-    # Durum Mesajı
     status_color = (255, 200, 0) if "BEKLENİYOR" in status_msg else ((0, 255, 100) if "AKTİF" in status_msg else (255, 50, 50))
     draw_text_with_shadow(surface, f"DURUM: {status_msg}", font_term,
                          (term_rect.centerx, term_rect.y + 200), status_color, align='center')
     
-    # Talimat
     font_small = pygame.font.Font(None, 25)
     draw_text_with_shadow(surface, "[ENTER] ONAYLA   [ESC] ÇIKIŞ", font_small,
                          (term_rect.centerx, term_rect.bottom - 30), (150, 150, 150), align='center')
@@ -238,8 +228,6 @@ def render_main_menu(surface, mouse_pos, buttons):
     
     active_buttons = {}
     
-    # Buton konumlarını düzenledim
-    
     # 1. Hikaye Modu
     btn_camp_rect = pygame.Rect(w//2 - 150, 340, 300, 50)
     is_hover = btn_camp_rect.collidepoint(mouse_pos)
@@ -258,10 +246,10 @@ def render_main_menu(surface, mouse_pos, buttons):
     draw_button(surface, btn_settings_rect, "AYARLAR", is_hover)
     active_buttons['settings'] = btn_settings_rect
     
-    # 4. Hile Terminali (YENİ)
+    # 4. Hile Terminali
     btn_cheat_rect = pygame.Rect(w//2 - 150, 520, 300, 50)
     is_hover = btn_cheat_rect.collidepoint(mouse_pos)
-    draw_button(surface, btn_cheat_rect, "HİLE TERMİNALİ", is_hover, (50, 0, 50)) # Mor renk
+    draw_button(surface, btn_cheat_rect, "HİLE TERMİNALİ", is_hover, (50, 0, 50))
     active_buttons['cheat_terminal'] = btn_cheat_rect
     
     # 5. Çıkış
@@ -288,12 +276,10 @@ def render_level_select(surface, mouse_pos, save_data, page_index=0):
         
     unlocked = easy_data['unlocked_levels']
     
-    # --- SAYFALAMA MANTIĞI ---
     ITEMS_PER_PAGE = 4
     all_levels = list(EASY_MODE_LEVELS.items())
     total_pages = math.ceil(len(all_levels) / ITEMS_PER_PAGE)
     
-    # Geçerli sayfa sınırları
     start_idx = page_index * ITEMS_PER_PAGE
     end_idx = min(start_idx + ITEMS_PER_PAGE, len(all_levels))
     current_page_levels = all_levels[start_idx:end_idx]
@@ -336,21 +322,17 @@ def render_level_select(surface, mouse_pos, save_data, page_index=0):
             
         start_y += 120
 
-    # --- NAVİGASYON BUTONLARI ---
     nav_y = h - 100
     
-    # Önceki Sayfa
     if page_index > 0:
         btn_prev = pygame.Rect(w//2 - 250, nav_y, 200, 50)
         draw_button(surface, btn_prev, "<< ÖNCEKİ", btn_prev.collidepoint(mouse_pos))
         active_buttons['prev_page'] = btn_prev
         
-    # Sayfa Göstergesi
     page_font = pygame.font.Font(None, 35)
     draw_text_with_shadow(surface, f"SAYFA {page_index + 1} / {total_pages}", page_font,
                          (w//2, nav_y + 25), WHITE, align='center')
         
-    # Sonraki Sayfa
     if page_index < total_pages - 1:
         btn_next = pygame.Rect(w//2 + 50, nav_y, 200, 50)
         draw_button(surface, btn_next, "SONRAKİ >>", btn_next.collidepoint(mouse_pos))
@@ -385,12 +367,10 @@ def render_level_complete(surface, mouse_pos, level_data, score):
     
     active_buttons = {}
     
-    # Devam Et Butonu
     btn_cont = pygame.Rect(w//2 - 150, h//2 + 100, 300, 50)
     draw_button(surface, btn_cont, "DEVAM ET", btn_cont.collidepoint(mouse_pos), (0, 100, 0))
     active_buttons['continue'] = btn_cont
     
-    # Menüye Dön Butonu (YENİ)
     btn_menu = pygame.Rect(w//2 - 150, h//2 + 160, 300, 50)
     draw_button(surface, btn_menu, "MENÜYE DÖN", btn_menu.collidepoint(mouse_pos), (50, 50, 80))
     active_buttons['return_menu'] = btn_menu
@@ -403,7 +383,6 @@ def render_settings_menu(surface, mouse_pos, settings_data):
     
     draw_glitch_text(surface, "SİSTEM AYARLARI", 80, w//2, 80, UI_BORDER_COLOR)
     
-    # Paneli biraz daha genişlettim ki sliderlar rahat sığsın
     panel_rect = pygame.Rect(w//2 - 375, 140, 750, 700)
     draw_cyber_panel(surface, panel_rect, UI_BORDER_COLOR, "TERCİHLER & SES")
     
@@ -423,47 +402,34 @@ def render_settings_menu(surface, mouse_pos, settings_data):
     label_font = pygame.font.Font(None, 28)
     
     for label, key, slider_color in volume_settings:
-        # Etiket
         draw_text_with_shadow(surface, label, label_font, (btn_x, current_y), WHITE, align='midleft')
         
-        # Slider Arkaplan (Kanal)
         slider_rect = pygame.Rect(btn_x + 150, current_y - 5, 450, 12)
-        pygame.draw.rect(surface, (30, 30, 30), slider_rect) # Koyu kanal
-        pygame.draw.rect(surface, (100, 100, 100), slider_rect, 1) # İnce kenarlık
+        pygame.draw.rect(surface, (30, 30, 30), slider_rect)
+        pygame.draw.rect(surface, (100, 100, 100), slider_rect, 1)
         
-        # Doluluk Oranı
         volume = settings_data.get(key, 0.5)
         fill_width = int(slider_rect.width * volume)
         pygame.draw.rect(surface, slider_color, (slider_rect.x, slider_rect.y, fill_width, slider_rect.height))
         
-        # Cyber Handle (Kaydırıcı Başlığı)
         handle_x = slider_rect.x + fill_width
         handle_rect = pygame.Rect(handle_x - 5, slider_rect.y - 8, 10, 28)
         pygame.draw.rect(surface, WHITE, handle_rect)
         pygame.draw.rect(surface, slider_color, handle_rect, 2)
         
-        # Etkileşim için buton olarak kaydet (Tıklama kontrolü için)
         active_buttons[f'slider_{key}'] = slider_rect
         
         current_y += spacing
 
-    current_y += 20 # Boşluk bırak
+    current_y += 20
 
     # --- GÖRÜNTÜ VE SİSTEM AYARLARI ---
-    # Tam Ekran
     mode_text = "MOD: [TAM EKRAN]" if settings_data['fullscreen'] else "MOD: [PENCERE]"
     btn_mode = pygame.Rect(btn_x, current_y, btn_w, 50)
     draw_button(surface, btn_mode, mode_text, btn_mode.collidepoint(mouse_pos))
     active_buttons['toggle_fullscreen'] = btn_mode
     current_y += spacing - 10
 
-    # Kalite
-    q_text = f"EFEKT KALİTESİ: [{settings_data['quality']}]"
-    btn_q = pygame.Rect(btn_x, current_y, btn_w, 50)
-    draw_button(surface, btn_q, q_text, btn_q.collidepoint(mouse_pos))
-    active_buttons['toggle_quality'] = btn_q
-    current_y += spacing - 10
-    
     # Çözünürlük
     current_res = AVAILABLE_RESOLUTIONS[settings_data['res_index']]
     res_text = f"ÇÖZÜNÜRLÜK: [{current_res[0]}x{current_res[1]}]"
@@ -471,7 +437,7 @@ def render_settings_menu(surface, mouse_pos, settings_data):
     draw_button(surface, btn_res, res_text, btn_res.collidepoint(mouse_pos))
     active_buttons['change_resolution'] = btn_res
     current_y += spacing - 10
-    
+
     # Uygula
     btn_apply = pygame.Rect(btn_x, current_y, btn_w, 50)
     draw_button(surface, btn_apply, "AYARLARI UYGULA", btn_apply.collidepoint(mouse_pos), (0, 80, 0))
@@ -503,7 +469,6 @@ def render_ui(surface, state, data, mouse_pos=(0,0)):
         interactive_elements = render_main_menu(surface, mouse_pos, None)
     
     elif state == 'LEVEL_SELECT':
-        # Sayfalama bilgisini data'dan al
         page_index = data.get('level_select_page', 0)
         interactive_elements = render_level_select(surface, mouse_pos, data.get('save_data'), page_index)
 
@@ -566,7 +531,6 @@ def render_ui(surface, state, data, mouse_pos=(0,0)):
                                  (w//2, h//2 + 180), WHITE)
 
     elif state == 'PLAYING':
-        # GÜVENLİK: Tema verisi yoksa varsayılanı kullan
         current_theme = data.get('theme')
         if not current_theme:
             current_theme = THEMES[0]
@@ -575,11 +539,8 @@ def render_ui(surface, state, data, mouse_pos=(0,0)):
         draw_cyber_panel(surface, left_panel, current_theme["border_color"], 
                         f"BÖLÜM {data['level_idx']}")
         
-        # --- UI SYSTEM DÜZELTMESİ BAŞLANGICI ---
-        
         # DASH BARI
         active_dash_max = data.get('active_dash_max', 1)
-        # Eğer max değer 0 veya daha küçükse (Sınırsız Dash), barı full göster
         if active_dash_max <= 0:
             d_fill = 200 
         else:
@@ -593,7 +554,6 @@ def render_ui(surface, state, data, mouse_pos=(0,0)):
         
         # SLAM BARI
         active_slam_max = data.get('active_slam_max', 1)
-        # Eğer max değer 0 veya daha küçükse (Sınırsız Slam), barı full göster
         if active_slam_max <= 0:
             s_fill = 200
         else:
@@ -605,16 +565,13 @@ def render_ui(surface, state, data, mouse_pos=(0,0)):
         slam_font = pygame.font.Font(None, 20)
         draw_text_with_shadow(surface, "SLAM", slam_font, (60, 100), PLAYER_SLAM, align='midleft')
 
-        # --- UI SYSTEM DÜZELTMESİ BİTİŞİ ---
-        
-        # --- KARMA GÖSTERGESİ (YENİ) ---
+        # KARMA GÖSTERGESİ
         karma = data.get('karma', 0)
         kills = data.get('kills', 0)
         
-        # Karma Rengi
-        karma_color = (255, 255, 255) # Nötr
-        if karma > 20: karma_color = (0, 255, 100) # İyi
-        elif karma < -20: karma_color = (255, 50, 50) # Kötü
+        karma_color = (255, 255, 255)
+        if karma > 20: karma_color = (0, 255, 100)
+        elif karma < -20: karma_color = (255, 50, 50)
         
         karma_text = f"KARMA: {karma}"
         kill_text = f"ÖLÜM: {kills}"
@@ -623,7 +580,6 @@ def render_ui(surface, state, data, mouse_pos=(0,0)):
         draw_text_with_shadow(surface, karma_text, karma_font, (350, 60), karma_color)
         draw_text_with_shadow(surface, kill_text, karma_font, (350, 90), (200, 50, 50))
         
-        # --- FIX: Division by Zero Hatası Düzeltmesi ---
         goal = data['level_data'].get('goal_score', 0)
         current = data['score']
         
@@ -631,7 +587,7 @@ def render_ui(surface, state, data, mouse_pos=(0,0)):
             progress = min(1.0, current / goal)
             score_text = f"{int(current)} / {goal}"
         else:
-            progress = 0.0 # Hedef yoksa (Dinlenme alanı) bar boş kalsın veya dolmasın
+            progress = 0.0
             score_text = f"SKOR: {int(current)}"
         
         score_rect = pygame.Rect(w - 350, 40, 310, 80)

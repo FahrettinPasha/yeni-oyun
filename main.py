@@ -8,7 +8,7 @@ import math
 import os
 import json
 import warnings
-import numpy as np 
+import numpy as np
 
 # Gereksiz uyarıları gizle
 warnings.filterwarnings("ignore", category=UserWarning, module='pygame.pkgdata')
@@ -37,9 +37,9 @@ from cutscene import AICutscene
 # --- Asset Paths Tanımı ---
 asset_paths = {
     'font': 'assets/fonts/VCR_OSD_MONO.ttf',
-    'sfx_bip': 'assets/sounds/bip.mp3',      
-    'sfx_glitch': 'assets/sounds/glitch.mp3', 
-    'sfx_awake': 'assets/sounds/awake.mp3',   
+    'sfx_bip': 'assets/sounds/bip.mp3',
+    'sfx_glitch': 'assets/sounds/glitch.mp3',
+    'sfx_awake': 'assets/sounds/awake.mp3',
     'npc_image': 'assets/images/npc_silhouette.png'}
 
 # --- YENİ: BOSS MANAGER SİSTEMİ ---
@@ -52,19 +52,6 @@ def trigger_guardian_interruption():
     all_enemies.empty()
     GAME_STATE = 'CHAT'
     story_manager.set_dialogue("VASI", "SİSTEM UYARISI: İrade bütünlüğü kritik seviyenin altında... Müdahale ediliyor.", is_cutscene=True)
-
-# --- SES AYARLARI GİRİŞ İŞLEME FONKSİYONU ---
-def handle_settings_input(events, settings_data, mouse_pos):
-    mouse_x, mouse_y = mouse_pos
-    for event in events:
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            for i, key in enumerate(["sound_volume", "music_volume", "effects_volume"]):
-                slider_rect = pygame.Rect(350, 170 + i * 70, 300, 10)
-                if slider_rect.collidepoint(mouse_x, mouse_y):
-                    relative_x = mouse_x - slider_rect.x
-                    settings_data[key] = max(0.0, min(1.0, relative_x / slider_rect.width))
-        elif event.type == pygame.MOUSEBUTTONUP:
-            save_manager.update_settings(settings_data)
 
 # --- 1. SİSTEM VE EKRAN AYARLARI ---
 pygame.init()
@@ -88,9 +75,10 @@ try:
 except:
     print("Ses kartı bulunamadı veya meşgul.")
 
-DASH_SOUND = load_sound_asset("assets/sfx/dash.wav", volume=FX_VOLUME * 1.1)
-SLAM_SOUND = load_sound_asset("assets/sfx/slam.wav", volume=FX_VOLUME * 1.5)
-EXPLOSION_SOUND = get_silent_sound() 
+# Ses dosyaları – volume parametresi KALDIRILDI, artık kanal seviyesinden yönetiliyor
+DASH_SOUND = load_sound_asset("assets/sfx/dash.wav")
+SLAM_SOUND = load_sound_asset("assets/sfx/slam.wav")
+EXPLOSION_SOUND = get_silent_sound()
 
 current_level_music = None
 MAX_VFX_COUNT = 200
@@ -99,12 +87,11 @@ METEOR_CORE = (255, 255, 200)
 METEOR_FIRE = (255, 80, 0)
 
 # --- 3. DURUM DEĞİŞKENLERİ ---
-GAME_STATE = 'MENU' 
+GAME_STATE = 'MENU'
 vasil_companion = None
 
 game_settings = {
     'fullscreen': True,
-    'quality': 'HIGH',
     'res_index': 1,
     'fps_limit': 60,
     'fps_index': 1,
@@ -116,6 +103,7 @@ current_fps = 60
 
 save_manager = SaveManager()
 story_manager = StoryManager()
+game_settings = save_manager.get_settings()  
 philosophical_core = PhilosophicalCore()
 reality_shifter = RealityShiftSystem()
 time_layer = TimeLayerSystem()
@@ -164,7 +152,7 @@ dash_angle = 0.0
 dash_frame_counter = 0.0
 character_state = 'idle'
 slam_collision_check_frames = 0
-active_damage_waves = [] 
+active_damage_waves = []
 
 active_player_speed = PLAYER_SPEED
 active_dash_cd = DASH_COOLDOWN
@@ -204,11 +192,11 @@ karma_notification_text = ""
 
 rest_area_manager = RestAreaManager()
 
+# NPC ekosistemi - kalite ayarı kaldırıldığı için her zaman oluştur
 npc_ecosystem = []
-if game_settings['quality'] != 'LOW':
-    for i in range(50):
-        npc = LivingNPC(i, random.randint(1, 5))
-        npc_ecosystem.append(npc)
+for i in range(50):
+    npc = LivingNPC(i, random.randint(1, 5))
+    npc_ecosystem.append(npc)
 
 districts = []
 for i in range(12):
@@ -226,7 +214,7 @@ boss_arenas = [
 def apply_display_settings():
     global screen, current_display_w, current_display_h
     target_res = AVAILABLE_RESOLUTIONS[game_settings['res_index']]
-    
+
     if game_settings['fullscreen']:
         current_display_w, current_display_h = LOGICAL_WIDTH, LOGICAL_HEIGHT
         flags = pygame.SCALED | pygame.FULLSCREEN | pygame.DOUBLEBUF | pygame.HWSURFACE
@@ -243,18 +231,18 @@ def add_new_platform(start_x=None):
             start_x = rightmost.rect.right + gap
         else:
             start_x = LOGICAL_WIDTH
-            
+
     width = random.randint(PLATFORM_MIN_WIDTH, PLATFORM_MAX_WIDTH)
     y = random.choice(PLATFORM_HEIGHTS)
     new_plat = Platform(start_x, y, width, 50)
     all_platforms.add(new_plat)
 
     if current_level_idx in [10, 15]:
-        return 
+        return
 
     has_enemy = False
     lvl_props = EASY_MODE_LEVELS.get(current_level_idx, {})
-    
+
     if not lvl_props.get("no_enemies") and width > 120 and random.random() < 0.4:
         enemy_roll = random.random()
         if current_level_idx >= 7 and enemy_roll < 0.15:
@@ -272,7 +260,7 @@ def add_new_platform(start_x=None):
         safe_start_x = new_plat.rect.right + safe_gap
         safe_width = random.randint(PLATFORM_MIN_WIDTH, PLATFORM_MAX_WIDTH)
         possible_heights = [h for h in PLATFORM_HEIGHTS if abs(h - y) <= VERTICAL_GAP]
-        if not possible_heights: 
+        if not possible_heights:
             possible_heights = PLATFORM_HEIGHTS
         safe_y = random.choice(possible_heights)
         safe_plat = Platform(safe_start_x, safe_y, safe_width, 50)
@@ -287,17 +275,16 @@ def start_loading_sequence(next_state_override=None):
     loading_timer = 0
     loading_stage = 0
     target_state_after_load = next_state_override if next_state_override else 'PLAYING'
-    
-    if game_settings['quality'] == 'LOW':
-        global MAX_VFX_COUNT, MAX_DASH_VFX_PER_FRAME
-        MAX_VFX_COUNT = 50
-        MAX_DASH_VFX_PER_FRAME = 2
+    # Kalite ayarı kaldırıldığı için sabit değerler kullanılır
+    global MAX_VFX_COUNT, MAX_DASH_VFX_PER_FRAME
+    MAX_VFX_COUNT = 200
+    MAX_DASH_VFX_PER_FRAME = 5
 
 def start_story_chapter(chapter_id):
     global GAME_STATE, current_level_idx, player_x, player_y, camera_speed, CURRENT_THEME, y_velocity
     story_manager.load_chapter(chapter_id)
     GAME_STATE = 'CHAT'
-    
+
     if chapter_id == 0:
         all_platforms.empty()
         all_enemies.empty()
@@ -321,7 +308,7 @@ def init_rest_area():
     platform_width = 400
     gap = 200
     npc_spawn_index = 0
-    
+
     for i in range(len(NPC_PERSONALITIES)):
         personality = NPC_PERSONALITIES[i]
         name = NPC_NAMES[i]
@@ -341,7 +328,7 @@ def init_rest_area():
             npc.talk_radius = 250
         npcs.append(npc)
         npc_spawn_index += 1
-    
+
     center_x = (npc_spawn_index * (platform_width + gap)) + 200
     center_platform = Platform(center_x, LOGICAL_HEIGHT - 150, 600, 60, theme_index=4)
     all_platforms.add(center_platform)
@@ -350,7 +337,7 @@ def init_limbo():
     global player_x, player_y, y_velocity, camera_speed, CURRENT_THEME
     global all_platforms, all_enemies, all_vfx, npcs, game_canvas
     global current_level_idx, boss_manager_system
-    
+
     boss_manager_system.reset()
     current_level_idx = 99
     all_platforms.empty()
@@ -360,38 +347,38 @@ def init_limbo():
     camera_speed = 0
     y_velocity = 0
     CURRENT_THEME = THEMES[2]
-    
+
     center_plat = Platform(LOGICAL_WIDTH//2 - 400, LOGICAL_HEIGHT - 150, 800, 50, theme_index=4)
     all_platforms.add(center_plat)
     player_x = LOGICAL_WIDTH // 2 - 100
     player_y = LOGICAL_HEIGHT - 250
-    
+
     karma = save_manager.get_karma()
     npc_name = ""
     npc_prompt = ""
     npc_color = (255, 255, 255)
     personality = "guide"
-    
+
     if karma >= 0:
         npc_name = "SAVAŞÇI ARES"
         npc_prompt = LIMBO_ARES_PROMPT
         npc_color = (255, 50, 50)
         personality = "warrior"
-    else: 
+    else:
         npc_name = "VASİ"
         npc_prompt = LIMBO_VASIL_PROMPT
         npc_color = (0, 255, 100)
         personality = "philosopher"
 
     limbo_npc = NPC(
-        x=LOGICAL_WIDTH // 2 + 100, 
+        x=LOGICAL_WIDTH // 2 + 100,
         y=LOGICAL_HEIGHT - 230,
         name=npc_name,
         color=npc_color,
         personality_type=personality,
         prompt=npc_prompt
     )
-    limbo_npc.ai_active = True 
+    limbo_npc.ai_active = True
     npcs.append(limbo_npc)
     try: AMBIENT_CHANNEL.stop()
     except: pass
@@ -400,7 +387,7 @@ def init_redemption_mode():
     global player_x, player_y, y_velocity, camera_speed, CURRENT_THEME
     global all_platforms, all_enemies, all_vfx, npcs, current_level_idx
     global has_talisman, boss_manager_system
-    
+
     current_level_idx = 11
     has_talisman = True
     all_platforms.empty()
@@ -424,7 +411,7 @@ def init_genocide_mode():
     global player_x, player_y, y_velocity, camera_speed, CURRENT_THEME
     global all_platforms, all_enemies, all_vfx, npcs, current_level_idx
     global vasil_companion, boss_manager_system
-    
+
     current_level_idx = 11
     all_platforms.empty()
     all_enemies.empty()
@@ -438,7 +425,7 @@ def init_genocide_mode():
     player_y = LOGICAL_HEIGHT - 250
     camera_speed = INITIAL_CAMERA_SPEED * 1.6
     y_velocity = 0
-    vasil_companion = None 
+    vasil_companion = None
     try:
         sound = load_sound_asset("assets/music/final_ascension.mp3", generate_ambient_fallback, 0.8)
         AMBIENT_CHANNEL.play(sound, loops=-1)
@@ -472,7 +459,7 @@ def init_game():
         has_talisman = False
         vasil_companion = None
         has_revived_this_run = False
-    
+
     active_player_speed = PLAYER_SPEED
     active_dash_cd = DASH_COOLDOWN
     active_slam_cd = SLAM_COOLDOWN_BASE
@@ -482,7 +469,7 @@ def init_game():
     npc_conversation_active = False
     npc_chat_input = ""
     npc_chat_history = []
-    
+
     if lvl_config.get('type') == 'rest_area':
         camera_speed = 0
         CURRENT_THEME = THEMES[4]
@@ -496,7 +483,7 @@ def init_game():
         except:
             current_level_music = generate_calm_ambient()
             AMBIENT_CHANNEL.play(current_level_music, loops=-1)
-            
+
     elif lvl_config.get('type') == 'boss_fight':
         pass
     elif lvl_config.get('type') == 'scrolling_boss':
@@ -513,19 +500,19 @@ def init_game():
         all_platforms.empty()
         start_plat = Platform(0, LOGICAL_HEIGHT - 50, 400, 50)
         all_platforms.add(start_plat)
-        
+
         karma = save_manager.get_karma()
         boss = None
-        boss_spawn_x = LOGICAL_WIDTH - 300 
+        boss_spawn_x = LOGICAL_WIDTH - 300
         if karma <= -20:
             boss = AresBoss(boss_spawn_x, LOGICAL_HEIGHT - 200)
         elif karma >= 20:
-            boss = VasilBoss(boss_spawn_x, 100) 
+            boss = VasilBoss(boss_spawn_x, 100)
         else:
             boss = NexusBoss(boss_spawn_x, LOGICAL_HEIGHT - 400)
-        
+
         if boss:
-            boss.ignore_camera_speed = True 
+            boss.ignore_camera_speed = True
             all_enemies.add(boss)
     else:
         mult = lvl_config.get('speed_mult', 1.0)
@@ -542,7 +529,7 @@ def init_game():
         except:
             current_level_music = generate_ambient_fallback()
             AMBIENT_CHANNEL.play(current_level_music, loops=-1)
-        
+
         all_platforms.empty()
         start_plat = Platform(0, LOGICAL_HEIGHT - 50, 400, 50)
         all_platforms.add(start_plat)
@@ -552,7 +539,7 @@ def init_game():
             if len(all_platforms) > 0:
                 current_right = max(p.rect.right for p in all_platforms)
             else:
-                current_right += 200 
+                current_right += 200
 
         if current_level_idx == 15:
             karma = save_manager.get_karma()
@@ -566,13 +553,13 @@ def init_game():
             if boss:
                 boss.ignore_camera_speed = True
                 all_enemies.add(boss)
-    
+
     if current_level_idx == 15:
         for e in all_enemies:
-            if hasattr(e, 'health'): 
+            if hasattr(e, 'health'):
                 e.max_health = 50000
                 e.health = 50000
-    
+
     y_velocity = score = dash_timer = dash_cooldown_timer = screen_shake = slam_stall_timer = slam_cooldown = 0
     is_jumping = is_dashing = is_slamming = False
     jumps_left = MAX_JUMPS
@@ -598,6 +585,7 @@ def main():
     run_game_loop()
 
 def run_game_loop():
+    dragging_slider = None
     global GAME_STATE, loading_timer, loading_logs, loading_stage, target_state_after_load
     global score, camera_speed, player_x, player_y, y_velocity, is_jumping, is_dashing, is_slamming
     global slam_stall_timer, slam_cooldown, jumps_left, dash_timer, dash_cooldown_timer
@@ -614,7 +602,7 @@ def run_game_loop():
     global level_select_page, vasil_companion
     global boss_manager_system
     global level_15_timer, finisher_active, finisher_state_timer, finisher_type, level_15_cutscene_played
-    
+
     is_super_mode = False
     terminal_input = ""
     terminal_status = "KOMUT BEKLENİYOR..."
@@ -624,7 +612,7 @@ def run_game_loop():
     last_time = pygame.time.get_ticks()
     frame_count = 0
     current_level_idx = 15
-    
+
     CURRENT_THEME = THEMES[0]
     CURRENT_SHAPE = 'circle'
     score = 0.0
@@ -651,11 +639,11 @@ def run_game_loop():
     level_15_cutscene_played = False
     boss_manager_system.reset()
     vasil_companion = None
-    
+
     while running:
         current_time = pygame.time.get_ticks()
         dt = (current_time - last_time) / 1000.0
-        dt = min(dt, 1.0 / 30.0) 
+        dt = min(dt, 1.0 / 30.0)
         last_time = current_time
         time_ms = current_time
         frame_count += 1
@@ -673,12 +661,60 @@ def run_game_loop():
                      sprite.kill()
 
         events = pygame.event.get()
+
+        # --- AYARLAR MENÜSÜ İÇİN ÖZEL OLAY YÖNETİMİ (SÜRÜKLEME) ---
         if GAME_STATE == 'SETTINGS':
-            handle_settings_input(events, game_settings, mouse_pos)
-        
+            # Ayarlar menüsündeyken olayları burada işle
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    is_slider_clicked = False
+                    # Slider'lardan birine tıklandı mı diye kontrol et
+                    for key, rect in active_ui_elements.items():
+                        if key.startswith('slider_') and rect.collidepoint(mouse_pos):
+                            dragging_slider = key
+                            is_slider_clicked = True
+                            # Anında güncelleme için
+                            slider_key_name = dragging_slider.replace('slider_', '')
+                            relative_x = mouse_pos[0] - rect.x
+                            value = max(0.0, min(1.0, relative_x / rect.width))
+                            game_settings[slider_key_name] = value
+                            break
+
+                    # Eğer bir slider'a tıklanmadıysa, diğer butonları kontrol et
+                    if not is_slider_clicked:
+                        if 'toggle_fullscreen' in active_ui_elements and active_ui_elements['toggle_fullscreen'].collidepoint(mouse_pos):
+                            game_settings['fullscreen'] = not game_settings['fullscreen']
+                        elif 'change_resolution' in active_ui_elements and active_ui_elements['change_resolution'].collidepoint(mouse_pos):
+                            game_settings['res_index'] = (game_settings['res_index'] + 1) % len(AVAILABLE_RESOLUTIONS)
+                        elif 'apply_changes' in active_ui_elements and active_ui_elements['apply_changes'].collidepoint(mouse_pos):
+                            apply_display_settings()
+                        elif 'back' in active_ui_elements and active_ui_elements['back'].collidepoint(mouse_pos):
+                            GAME_STATE = 'MENU'
+                        elif 'reset_progress' in active_ui_elements and active_ui_elements['reset_progress'].collidepoint(mouse_pos):
+                            save_manager.reset_progress()
+
+                elif event.type == pygame.MOUSEMOTION:
+                    if dragging_slider:
+                        slider_key_name = dragging_slider.replace('slider_', '')
+                        slider_rect = active_ui_elements[dragging_slider]
+                        relative_x = mouse_pos[0] - slider_rect.x
+                        value = max(0.0, min(1.0, relative_x / slider_rect.width))
+                        game_settings[slider_key_name] = value
+
+                elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                    if dragging_slider:
+                        save_manager.update_settings(game_settings)
+                        dragging_slider = None
+
+            # Bu olaylar sadece ayarlar menüsü içindi, ana döngüye gitmesin.
+            events = []
+
+        # --- DİĞER TÜM OYUN DURUMLARI İÇİN OLAY DÖNGÜSÜ ---
         for event in events:
             if event.type == pygame.QUIT:
                 running = False
+
+            # --- MOUSEBUTTONDOWN (SETTINGS HARİÇ TÜM DURUMLAR) ---
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if GAME_STATE == 'MENU':
                     if 'story_mode' in active_ui_elements and active_ui_elements['story_mode'].collidepoint(mouse_pos):
@@ -704,7 +740,7 @@ def run_game_loop():
                         GAME_STATE = 'ENDLESS_SELECT'
                     elif 'exit' in active_ui_elements and active_ui_elements['exit'].collidepoint(mouse_pos):
                         running = False
-                
+
                 elif GAME_STATE == 'LEVEL_SELECT':
                     if 'back' in active_ui_elements and active_ui_elements['back'].collidepoint(mouse_pos):
                         GAME_STATE = 'MENU'
@@ -716,7 +752,6 @@ def run_game_loop():
                         for key, rect in active_ui_elements.items():
                             if key.startswith('level_') and rect.collidepoint(mouse_pos):
                                 level_num = int(key.split('_')[1])
-                                current_level_idx = level_num
                                 current_level_idx = level_num
                                 start_loading_sequence('PLAYING')
                                 break
@@ -732,20 +767,6 @@ def run_game_loop():
                                 start_loading_sequence('ENDLESS_PLAY')
                                 break
 
-                elif GAME_STATE == 'SETTINGS':
-                    if 'toggle_fullscreen' in active_ui_elements and active_ui_elements['toggle_fullscreen'].collidepoint(mouse_pos):
-                        game_settings['fullscreen'] = not game_settings['fullscreen']
-                    elif 'toggle_quality' in active_ui_elements and active_ui_elements['toggle_quality'].collidepoint(mouse_pos):
-                        game_settings['quality'] = 'LOW' if game_settings['quality'] == 'HIGH' else 'HIGH'
-                    elif 'change_resolution' in active_ui_elements and active_ui_elements['change_resolution'].collidepoint(mouse_pos):
-                        game_settings['res_index'] = (game_settings['res_index'] + 1) % len(AVAILABLE_RESOLUTIONS)
-                    elif 'apply_changes' in active_ui_elements and active_ui_elements['apply_changes'].collidepoint(mouse_pos):
-                        apply_display_settings()
-                    elif 'back' in active_ui_elements and active_ui_elements['back'].collidepoint(mouse_pos):
-                        GAME_STATE = 'MENU'
-                    elif 'reset_progress' in active_ui_elements and active_ui_elements['reset_progress'].collidepoint(mouse_pos):
-                        save_manager.reset_progress()
-
                 elif GAME_STATE == 'LEVEL_COMPLETE':
                     if 'continue' in active_ui_elements and active_ui_elements['continue'].collidepoint(mouse_pos):
                         next_level = current_level_idx + 1
@@ -754,10 +775,10 @@ def run_game_loop():
                             scenario = "BETRAYAL" if karma >= 0 else "JUDGMENT"
                             cinematic_assets = asset_paths.copy()
                             cinematic_assets['scenario'] = scenario
-                            if AMBIENT_CHANNEL.get_busy(): 
+                            if AMBIENT_CHANNEL.get_busy():
                                 AMBIENT_CHANNEL.stop()
                             scene = AICutscene(screen, clock, cinematic_assets)
-                            scene.run() 
+                            scene.run()
                             current_level_idx = 10
                             start_loading_sequence('PLAYING')
                             continue
@@ -776,7 +797,7 @@ def run_game_loop():
                             GAME_STATE = 'GAME_COMPLETE'
                     elif 'return_menu' in active_ui_elements and active_ui_elements['return_menu'].collidepoint(mouse_pos):
                         GAME_STATE = 'MENU'
-                
+
                 elif GAME_STATE in ['CHAT', 'CUTSCENE']:
                     if story_manager.state == "WAITING_CHOICE":
                         for key, rect in active_ui_elements.items():
@@ -787,16 +808,17 @@ def run_game_loop():
                     elif story_manager.waiting_for_click:
                         story_manager.next_line()
                         if story_manager.state == "FINISHED":
-                            if story_manager.current_chapter == 0: 
+                            if story_manager.current_chapter == 0:
                                 current_level_idx = 1
                                 start_loading_sequence('PLAYING')
                             else:
                                 start_loading_sequence('PLAYING')
 
+            # --- KEYDOWN OLAYLARI (TÜM DURUMLAR) ---
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     if GAME_STATE == 'PLAYING':
-                        GAME_STATE = 'MENU' 
+                        GAME_STATE = 'MENU'
                         AMBIENT_CHANNEL.stop()
                     elif GAME_STATE == 'NPC_CHAT':
                         GAME_STATE = 'PLAYING'
@@ -822,9 +844,9 @@ def run_game_loop():
                 if current_level_idx == 99 and event.key == pygame.K_r:
                     init_redemption_mode()
                 if current_level_idx == 99 and event.key == pygame.K_g:
-                    save_manager.update_karma(-80) 
+                    save_manager.update_karma(-80)
                     init_genocide_mode()
-                    
+
                 if GAME_STATE == 'PLAYING' and event.key == pygame.K_e:
                     closest_npc = None
                     min_dist = float('inf')
@@ -835,11 +857,11 @@ def run_game_loop():
                             closest_npc = npc
                     if closest_npc:
                         start_npc_conversation(closest_npc)
-                
+
                 elif GAME_STATE == 'TERMINAL':
                     if event.key == pygame.K_RETURN:
                         if terminal_input.upper() == "SUPER_MODE_ON":
-                            is_super_mode = not is_super_mode 
+                            is_super_mode = not is_super_mode
                             status = "AKTİF" if is_super_mode else "PASİF"
                             terminal_status = f"SÜPER MOD: {status}!"
                             terminal_input = ""
@@ -878,7 +900,7 @@ def run_game_loop():
                     else:
                         if len(npc_chat_input) < 100:
                             npc_chat_input += event.unicode
-                
+
                 if GAME_STATE == 'PLAYING' and event.key == pygame.K_t:
                     lvl_config = EASY_MODE_LEVELS.get(current_level_idx, EASY_MODE_LEVELS[1])
                     if lvl_config.get('type') == 'rest_area':
@@ -944,13 +966,13 @@ def run_game_loop():
                         dash_angle = math.atan2(dash_vy, dash_vx)
 
         if GAME_STATE == 'LOADING':
-            loading_timer += 1 
+            loading_timer += 1
             if loading_timer % 10 == 0 and loading_stage < len(fake_log_messages):
                 loading_logs.append(fake_log_messages[loading_stage])
                 loading_stage += 1
                 loading_progress = min(0.95, loading_stage / len(fake_log_messages))
             if loading_stage >= len(fake_log_messages):
-                loading_progress += 0.02 
+                loading_progress += 0.02
                 if loading_progress >= 1.0:
                     init_game()
                     GAME_STATE = target_state_after_load
@@ -961,7 +983,7 @@ def run_game_loop():
                 GAME_STATE = 'CUTSCENE'
             else:
                 GAME_STATE = 'CHAT'
-                
+
         elif GAME_STATE == 'NPC_CHAT':
             npc_cursor_timer += 1
             if npc_cursor_timer >= 30:
@@ -971,7 +993,7 @@ def run_game_loop():
         elif GAME_STATE in ['PLAYING', 'ENDLESS_PLAY']:
             current_karma = player_karma
             buff_stacks = (current_level_idx - 1) // 3
-            if buff_stacks > 2: 
+            if buff_stacks > 2:
                 buff_stacks = 2
             base_speed_mult = 1.0 + (0.25 * buff_stacks)
             base_cd_mult = 0.5 ** buff_stacks
@@ -982,12 +1004,12 @@ def run_game_loop():
                 base_speed_mult += karma_speed_bonus
                 base_cd_mult -= karma_cd_reduction
             active_player_speed = PLAYER_SPEED * base_speed_mult
-            active_dash_cd = DASH_COOLDOWN * max(0.2, base_cd_mult) 
+            active_dash_cd = DASH_COOLDOWN * max(0.2, base_cd_mult)
             active_slam_cd = SLAM_COOLDOWN_BASE * max(0.2, base_cd_mult)
             if vasil_companion:
-                active_player_speed = PLAYER_SPEED * 1.5 
-                active_dash_cd = 0 
-                active_slam_cd = 0 
+                active_player_speed = PLAYER_SPEED * 1.5
+                active_dash_cd = 0
+                active_slam_cd = 0
 
             lvl_config = EASY_MODE_LEVELS.get(current_level_idx, EASY_MODE_LEVELS[1])
             if lvl_config.get('type') == 'rest_area':
@@ -999,10 +1021,10 @@ def run_game_loop():
                     else:
                         GAME_STATE = 'GAME_COMPLETE'
             else:
-                if current_level_idx != 99: 
+                if current_level_idx != 99:
                     camera_speed = min(MAX_CAMERA_SPEED, camera_speed + SPEED_INCREMENT_RATE * frame_mul)
                     score_gain = 0.1 * camera_speed * frame_mul
-                    if is_super_mode: 
+                    if is_super_mode:
                         score_gain *= 40
                     score += score_gain
 
@@ -1089,7 +1111,7 @@ def run_game_loop():
                 if not vasil_companion:
                     dash_timer -= frame_mul
                 else:
-                    dash_timer = DASH_DURATION 
+                    dash_timer = DASH_DURATION
 
                 if dash_timer <= 0:
                     is_dashing = False
@@ -1117,7 +1139,7 @@ def run_game_loop():
                     player_x -= active_player_speed * frame_mul
                 if keys[pygame.K_d]:
                     player_x += active_player_speed * frame_mul
-                
+
                 if is_super_mode:
                     y_velocity = 0
                     fly_speed = 15
@@ -1160,21 +1182,21 @@ def run_game_loop():
             player_rect = pygame.Rect(int(player_x), int(player_y), PLAYER_W, PLAYER_H)
             dummy_player = type('',(object,),{'rect':player_rect})()
             enemy_hits = pygame.sprite.spritecollide(dummy_player, all_enemies, False)
-            
+
             for enemy in enemy_hits:
                 if has_talisman:
-                    enemy.kill() 
+                    enemy.kill()
                     saved_soul = SavedSoul(enemy.rect.centerx, enemy.rect.centery)
                     all_vfx.add(saved_soul)
                     all_vfx.add(ParticleExplosion(enemy.rect.centerx, enemy.rect.centery, (255, 215, 0), 20))
                     all_vfx.add(Shockwave(enemy.rect.centerx, enemy.rect.centery, (255, 255, 200), max_radius=120, width=5))
-                    save_manager.update_karma(25) 
+                    save_manager.update_karma(25)
                     save_manager.add_saved_soul(1)
                     score += 1000
-                    enemies_killed_current_level += 1 
+                    enemies_killed_current_level += 1
                     karma_notification_text = "RUH KURTARILDI! (+25)"
                     karma_notification_timer = 40
-                    continue 
+                    continue
 
                 if isinstance(enemy, EnemyBullet):
                     GAME_STATE = 'GAME_OVER'
@@ -1184,20 +1206,20 @@ def run_game_loop():
                 if is_dashing or is_slamming or is_super_mode:
                     enemy.kill()
                     score += 500
-                    if not is_super_mode: 
+                    if not is_super_mode:
                         save_manager.update_karma(-10)
                         enemies_killed_current_level += 1
                         karma_notification_text = "KARMA DÜŞTÜ!"
                         karma_notification_timer = 60
                     screen_shake = 15
-                    if EXPLOSION_SOUND: 
+                    if EXPLOSION_SOUND:
                         FX_CHANNEL.play(EXPLOSION_SOUND)
                     all_vfx.add(ParticleExplosion(enemy.rect.centerx, enemy.rect.centery, CURSED_PURPLE, 20))
                     all_vfx.add(Shockwave(enemy.rect.centerx, enemy.rect.centery, GLITCH_BLACK, max_radius=80, width=5))
                     pygame.time.delay(30)
                 else:
                     if player_karma <= -90 and not has_revived_this_run:
-                        has_revived_this_run = True 
+                        has_revived_this_run = True
                         karma_notification_text = "KARANLIK DİRİLİŞ AKTİF!"
                         karma_notification_timer = 120
                         screen_shake = 30
@@ -1219,10 +1241,10 @@ def run_game_loop():
                             high_score = max(high_score, int(score))
                             AMBIENT_CHANNEL.stop()
                             all_vfx.add(ParticleExplosion(player_x, player_y, CURSED_RED, 30))
-            
+
             move_rect = pygame.Rect(int(player_x), int(min(old_y, player_y)), PLAYER_W, int(abs(player_y - old_y)) + PLAYER_H)
             collided_platforms = pygame.sprite.spritecollide(type('',(object,),{'rect':move_rect})(), all_platforms, False)
-            
+
             for p in collided_platforms:
                 platform_top = p.rect.top
                 if (old_y + PLAYER_H <= platform_top + 15) and (player_y + PLAYER_H >= platform_top):
@@ -1260,9 +1282,9 @@ def run_game_loop():
                         pygame.draw.line(game_canvas, (0, 255, 100), (vasil_companion.x, vasil_companion.y), target.rect.center, 3)
                         target.kill()
                         all_vfx.add(ParticleExplosion(target.rect.centerx, target.rect.centery, (0, 255, 100), 15))
-                        save_manager.update_karma(-5) 
+                        save_manager.update_karma(-5)
                         score += 1000
-                
+
                 if save_manager.get_karma() <= -250:
                     vasil_companion.spike_timer += 1
                     if vasil_companion.spike_timer > 120:
@@ -1272,7 +1294,7 @@ def run_game_loop():
                             p = random.choice(vis_plats)
                             all_vfx.add(Shockwave(p.rect.centerx, p.rect.top, (0, 255, 100), max_radius=100, speed=15, rings=2))
                             for e in all_enemies:
-                                if e.rect.colliderect(p.rect.inflate(0, -50)): 
+                                if e.rect.colliderect(p.rect.inflate(0, -50)):
                                     e.kill()
                                     all_vfx.add(ParticleExplosion(e.rect.centerx, e.rect.centery, (0, 255, 100), 20))
 
@@ -1281,7 +1303,7 @@ def run_game_loop():
                 karma_notification_text = "VASİ KATILDI! (-100 KARMA)"
                 karma_notification_timer = 120
                 all_vfx.add(ScreenFlash((0, 255, 100), 100, 10))
-            
+
             if current_level_idx in [11, 12, 13, 14, 15] and save_manager.get_karma() == -250 and karma_notification_timer == 0:
                  karma_notification_text = "VASİ TAM GÜÇ! (-250 KARMA)"
                  karma_notification_timer = 120
@@ -1293,7 +1315,7 @@ def run_game_loop():
                     cinematic_assets = asset_paths.copy()
                     cinematic_assets['scenario'] = 'FINAL_MEMORY'
                     AICutscene(screen, clock, cinematic_assets).run()
-                    last_time = pygame.time.get_ticks() 
+                    last_time = pygame.time.get_ticks()
                     level_15_timer = 0
                     try: AMBIENT_CHANNEL.play(load_sound_asset("assets/music/final_boss.mp3", generate_ambient_fallback, 1.0), loops=-1)
                     except: pass
@@ -1307,7 +1329,7 @@ def run_game_loop():
                         finisher_active = True
                         finisher_state_timer = 0.0
                         finisher_type = 'GOOD' if player_karma >= 0 else 'BAD'
-                        if AMBIENT_CHANNEL.get_busy(): 
+                        if AMBIENT_CHANNEL.get_busy():
                             AMBIENT_CHANNEL.stop()
                         screen_shake = 50
 
@@ -1366,8 +1388,8 @@ def run_game_loop():
                                         all_vfx.add(ParticleExplosion(rx, ry, (255, 0, 0), 40))
                             elif finisher_state_timer > 5.0:
                                 boss_target.health = 0
-            
-            if current_level_idx in [10, 15]: 
+
+            if current_level_idx in [10, 15]:
                 boss_manager_system.update_logic(current_level_idx, all_platforms, player_x, player_karma, camera_speed, frame_mul, is_weakened=False)
                 player_hitbox = pygame.Rect(player_x + 5, player_y + 5, 20, 20)
                 player_obj_data = {'x': player_x, 'y': player_y}
@@ -1379,14 +1401,14 @@ def run_game_loop():
                     player_x -= 40
                     y_velocity = -10
                     current_k = save_manager.get_karma()
-                    damage = 75 
+                    damage = 75
                     if current_k > 0:
                         save_manager.update_karma(-damage)
                     elif current_k < 0:
                         save_manager.update_karma(damage)
                     new_k = save_manager.get_karma()
-                    if abs(new_k) < 50: 
-                        save_manager.data["karma"] = 0 
+                    if abs(new_k) < 50:
+                        save_manager.data["karma"] = 0
                         save_manager.save_data()
                         if current_level_idx == 10:
                             init_limbo()
@@ -1418,7 +1440,7 @@ def run_game_loop():
                 lvl_goal = base_goal * 0.75
                 if current_level_idx <= 15 and score >= lvl_goal:
                     if enemies_killed_current_level == 0:
-                        save_manager.update_karma(50) 
+                        save_manager.update_karma(50)
                         karma_notification_text = "PASİFİST BONUSU! (+50 KARMA)"
                     else:
                         save_manager.update_karma(5)
@@ -1427,14 +1449,14 @@ def run_game_loop():
                     save_manager.update_high_score('easy_mode', current_level_idx, score)
 
                 all_platforms.update(camera_speed * frame_mul)
-            
+
             all_enemies.update(camera_speed * frame_mul, dt, (player_x, player_y))
             for enemy in all_enemies:
                 if hasattr(enemy, 'spawn_queue') and enemy.spawn_queue:
                     for projectile in enemy.spawn_queue:
                         all_enemies.add(projectile)
-                enemy.spawn_queue = [] 
-            
+                enemy.spawn_queue = []
+
             if lvl_config.get('type') == 'boss_fight' or current_level_idx == 15:
                 boss_alive = False
                 boss_obj = None
@@ -1445,7 +1467,7 @@ def run_game_loop():
                         break
                 if not boss_alive and current_level_idx == 15:
                     score += 150000
-                    if AMBIENT_CHANNEL.get_busy(): 
+                    if AMBIENT_CHANNEL.get_busy():
                         AMBIENT_CHANNEL.stop()
                     final_karma = save_manager.get_karma()
                     ending_scenario = "GOOD_ENDING" if final_karma >= 0 else "BAD_ENDING"
@@ -1455,11 +1477,11 @@ def run_game_loop():
                     final_cutscene.run()
                     GAME_STATE = 'GAME_COMPLETE'
                     save_manager.update_high_score('easy_mode', current_level_idx, score)
-            
+
             for s in stars:
                 s.update(camera_speed * frame_mul)
             all_vfx.update(camera_speed * frame_mul)
-            
+
             for trail in trail_effects[:]:
                 try:
                     trail.update(camera_speed * frame_mul)
@@ -1472,14 +1494,14 @@ def run_game_loop():
                 if current_level_idx <= 15:
                     if len(all_platforms) > 0 and max(p.rect.right for p in all_platforms) < LOGICAL_WIDTH + 100:
                         add_new_platform()
-            
+
             if player_y > LOGICAL_HEIGHT + 100:
-                if current_level_idx == 10: 
+                if current_level_idx == 10:
                     init_limbo()
                     GAME_STATE = 'PLAYING'
-                    if npcs: 
+                    if npcs:
                         start_npc_conversation(npcs[0])
-                elif current_level_idx == 99:  
+                elif current_level_idx == 99:
                     player_y = LOGICAL_HEIGHT - 300
                     player_x = 100
                     y_velocity = 0
@@ -1491,12 +1513,12 @@ def run_game_loop():
                     all_vfx.add(ParticleExplosion(player_x, player_y, (255, 0, 0), 30))
 
             if player_x < -50:
-                if current_level_idx == 10: 
+                if current_level_idx == 10:
                     init_limbo()
                     GAME_STATE = 'PLAYING'
-                    if npcs: 
+                    if npcs:
                         start_npc_conversation(npcs[0])
-                elif current_level_idx == 99:  
+                elif current_level_idx == 99:
                     player_x = 50
                 else:
                     GAME_STATE = 'GAME_OVER'
@@ -1506,17 +1528,13 @@ def run_game_loop():
                     all_vfx.add(ParticleExplosion(player_x, player_y, (255, 0, 0), 30))
 
             rest_area_manager.update((player_x, player_y))
-            if game_settings['quality'] != 'LOW' and frame_count % 10 == 0:
-                for npc in npc_ecosystem:
-                    if abs(npc.x - player_x) < 500 and abs(npc.y - player_y) < 400:
-                        npc.draw(game_canvas, render_offset)
 
         ui_data = {
-            'theme': CURRENT_THEME, 
-            'score': score, 
+            'theme': CURRENT_THEME,
+            'score': score,
             'high_score': high_score,
-            'dash_cd': dash_cooldown_timer, 
-            'slam_cd': slam_cooldown, 
+            'dash_cd': dash_cooldown_timer,
+            'slam_cd': slam_cooldown,
             'time_ms': time_ms,
             'settings': game_settings,
             'progress': loading_progress,
@@ -1553,7 +1571,7 @@ def run_game_loop():
                 s.draw(game_canvas)
                 s.update(0.5)
             active_ui_elements = render_ui(game_canvas, GAME_STATE, ui_data, mouse_pos)
-        else: 
+        else:
             try:
                 anim_params = character_animator.get_draw_params()
             except:
@@ -1570,10 +1588,10 @@ def run_game_loop():
                 game_canvas.fill(era_data.get('bg_color', CURRENT_THEME["bg_color"]))
             else:
                 game_canvas.fill(CURRENT_THEME["bg_color"])
-            
+
             for s in stars:
                 s.draw(game_canvas)
-            
+
             if current_level_idx in [10, 15]:
                 current_k = save_manager.get_karma()
                 draw_background_boss_silhouette(game_canvas, current_k, LOGICAL_WIDTH, LOGICAL_HEIGHT)
@@ -1581,7 +1599,7 @@ def run_game_loop():
             vfx_surface.fill((0, 0, 0, 0))
             for p in all_platforms:
                 p.draw(game_canvas, CURRENT_THEME)
-            
+
             boss_manager_system.draw(game_canvas)
             for e in all_enemies:
                 e.draw(game_canvas, theme=CURRENT_THEME)
@@ -1604,14 +1622,14 @@ def run_game_loop():
                     modified_color = character_animator.get_modified_color(p_color)
                 except:
                     modified_color = p_color
-                
+
                 if has_talisman:
                     t = pygame.time.get_ticks() * 0.005
                     px, py = int(player_x + 15) + render_offset[0], int(player_y + 15) + render_offset[1]
                     radius = 35 + math.sin(t) * 5
                     pygame.draw.circle(game_canvas, (255, 215, 0), (px, py), int(radius), 2)
                     for i in range(3):
-                        angle = t + (i * 2.09) 
+                        angle = t + (i * 2.09)
                         ox = math.cos(angle) * radius
                         oy = math.sin(angle) * radius
                         pygame.draw.circle(game_canvas, (255, 255, 200), (int(px + ox), int(py + oy)), 4)
@@ -1624,15 +1642,15 @@ def run_game_loop():
 
             if vasil_companion:
                 vasil_companion.draw(game_canvas)
-                
+
             if karma_notification_timer > 0:
                 font = pygame.font.Font(None, 40)
                 color = (255, 50, 50) if "DÜŞTÜ" in karma_notification_text else (0, 255, 100)
-                if "DİRİLİŞ" in karma_notification_text: 
+                if "DİRİLİŞ" in karma_notification_text:
                     color = (200, 50, 200)
-                draw_text_with_shadow(game_canvas, karma_notification_text, font, 
+                draw_text_with_shadow(game_canvas, karma_notification_text, font,
                                      (LOGICAL_WIDTH//2, LOGICAL_HEIGHT//2 - 100), color, align="center")
-            
+
             if current_level_idx == 15 and not finisher_active:
                 remaining = max(0, 120 - level_15_timer)
                 mins = int(remaining // 60)
@@ -1640,7 +1658,7 @@ def run_game_loop():
                 time_str = f"HAYATTA KAL: {mins:02}:{secs:02}"
                 text_color = (255, 50, 50) if frame_count % 60 < 30 else (255, 255, 255)
                 font_timer = pygame.font.Font(None, 60)
-                draw_text_with_shadow(game_canvas, time_str, font_timer, 
+                draw_text_with_shadow(game_canvas, time_str, font_timer,
                                      (LOGICAL_WIDTH//2, 80), text_color, align="center")
 
             game_canvas.blit(vfx_surface, render_offset)
@@ -1662,10 +1680,10 @@ def run_game_loop():
                         game_canvas.blit(text_surf, (40, y_offset))
                         y_offset += 25
 
-            if game_settings['quality'] != 'LOW':
-                for npc in npc_ecosystem:
-                    if abs(npc.x - player_x) < 500 and abs(npc.y - player_y) < 400:
-                        npc.draw(game_canvas, render_offset)
+            # NPC ekosistemi her zaman çizilir (kalite ayarı kaldırıldı)
+            for npc in npc_ecosystem:
+                if abs(npc.x - player_x) < 500 and abs(npc.y - player_y) < 400:
+                    npc.draw(game_canvas, render_offset)
 
             if GAME_STATE not in ['CHAT', 'CUTSCENE']:
                 active_ui_elements = render_ui(game_canvas, GAME_STATE, ui_data, mouse_pos)
@@ -1679,6 +1697,28 @@ def run_game_loop():
                 final_game_image = pygame.transform.scale(game_canvas, screen.get_size())
         else:
             final_game_image = pygame.transform.scale(game_canvas, screen.get_size())
+
+        # --- SES SEVİYELERİNİ HER KAREDE UYGULA (DÜZELTİLMİŞ VERSİYON) ---
+        # Ayarları dosyadan değil, doğrudan hafızadaki güncel `game_settings`'ten alıyoruz.
+        master_vol = game_settings.get("sound_volume", 0.7)
+        music_vol = game_settings.get("music_volume", 0.5)
+        effects_vol = game_settings.get("effects_volume", 0.8)
+
+        # Müzik kanalının sesini ayarla
+        if 'AMBIENT_CHANNEL' in locals() and AMBIENT_CHANNEL:
+            try:
+                AMBIENT_CHANNEL.set_volume(master_vol * music_vol)
+            except Exception as e:
+                pass  # Kanal yoksa veya hata verirse görmezden gel
+
+        # SES EFEKTİ KANALININ sesini ayarla (EN ÖNEMLİ DEĞİŞİKLİK)
+        if 'FX_CHANNEL' in locals() and FX_CHANNEL:
+            try:
+                FX_CHANNEL.set_volume(master_vol * effects_vol)
+            except Exception as e:
+                pass  # Kanal yoksa veya hata verirse görmezden gel
+
+        # Artık her bir ses nesnesinin sesini ayrıca ayarlamaya gerek yok.
 
         screen.blit(final_game_image, (0, 0))
         pygame.display.flip()
