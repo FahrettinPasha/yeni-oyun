@@ -1,38 +1,42 @@
 {
-    "karma": -120,
+    "karma": 150,
     "saved_souls": 0,
     "easy_mode": {
-        "unlocked_levels": 12,
+        "unlocked_levels": 4,
         "completed_levels": [
             1,
             2,
-            3,
-            5,
-            6,
-            7,
-            9,
-            11
+            3
         ],
         "high_scores": {
-            "1": 709,
-            "2": 900,
-            "3": 1996,
-            "5": 3312,
-            "6": 4500,
-            "7": 7124,
-            "9": 9001,
-            "11": 53106,
-            "12": 2747
+            "1": 750,
+            "2": 1500,
+            "3": 2250
         }
     },
     "settings": {
-        "sound_volume": 0.48444444444444446,
-        "music_volume": 0.5088888888888888,
-        "effects_volume": 0.48444444444444446,
         "fullscreen": true,
-        "quality": "HIGH",
         "res_index": 1,
-        "fps_limit": 60,
-        "fps_index": 1
+        "fps_index": 1,
+        "sound_volume": 0.7,
+        "music_volume": 0.5,
+        "effects_volume": 0.8
+    },
+    "nexus_simulation": {
+        "economy": {
+            "credits": 100,
+            "stocks": {
+                "NEXUS": 10,
+                "GUTTER": 5,
+                "AMMO": 20
+            },
+            "inflation_rate": 1.0
+        },
+        "factions": {
+            "NEXUS": 50,
+            "GUTTER": 50,
+            "VOID": 50
+        },
+        "npc_memory": {}
     }
 }

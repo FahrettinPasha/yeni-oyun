@@ -1,6 +1,6 @@
 import pygame
-# --- EKRAN AYARLARI ---
 
+# --- EKRAN AYARLARI ---
 LOGICAL_WIDTH = 1920
 LOGICAL_HEIGHT = 1080
 SCREEN_WIDTH = 1920
@@ -18,7 +18,6 @@ VOLUME_SETTINGS = {
     "effects_volume": 0.8  # Efekt sesleri seviyesi
 }
 
-
 # --- AI & GEMINI AYARLARI ---
 GENAI_API_KEY = ""  # Kendi key'ini buraya yazmalısın
 AI_MODEL_NAME = 'gemini-2.5-flash-preview-09-2025'
@@ -31,8 +30,7 @@ Burada insanlar 'Skor' puanlarıyla yaşar. Düşük skorlular ölmez, 'Yama' (P
 Asla doğrudan emir verme. Oyuncuyu düşündür. Tonun melankolik, felsefi ve biraz gizemli olsun.
 """
 
-# --- NPC AYARLARI (GÜNCELLENDİ) ---
-# Vasi kaldırıldı, Sokrat eklendi. Merchant listede var ama kodda engelleyeceğiz.
+# --- NPC AYARLARI ---
 NPC_PERSONALITIES = ["philosopher", "warrior", "mystic", "guide", "merchant"]
 NPC_NAMES = ["Sokrat", "Ares", "Pythia", "Virgil", "Hermes"]
 NPC_COLORS = [(100, 200, 255), (255, 50, 50), (200, 100, 255), (100, 255, 150), (255, 200, 100)]
@@ -40,14 +38,14 @@ NPC_COLORS = [(100, 200, 255), (255, 50, 50), (200, 100, 255), (100, 255, 150), 
 NPC_PROMPTS = {
     "philosopher": "Hoş geldin 'İsimsiz'. Cebindeki boş kimlik kartı, bu şehirdeki en büyük özgürlüğündür.",
     "warrior": "Skorun yükseliyor... Egemenlerin dikkatini çekiyorsun. Kılıcın keskin mi?",
-    "merchant": "SİSTEM HATASI: TÜCCAR PROTOKOLÜ DEVRE DIŞI.", # Kodda engellenecek ama yedek
+    "merchant": "SİSTEM HATASI: TÜCCAR PROTOKOLÜ DEVRE DIŞI.", 
     "mystic": "Rüyalarımda cam kulelerin yıkıldığını görüyorum. Yama tutmamış bir zihin her şeyi değiştirebilir.",
     "guide": "Bu mağaradan çıkış var. Ama bedeli ağır. Hakikate hicret etmeye hazır mısın?"
 }
 
 REST_AREA_MUSIC = ["calm_ambient.mp3"]
 
-# --- HİKAYE VE BÖLÜM YAPILANDIRMASI (FRAGMENTIA: HAKİKAT VE İHANET) ---
+# --- HİKAYE VE BÖLÜM YAPILANDIRMASI (INTRO) ---
 STORY_CHAPTERS = {
     0: { 
         "title": "MİDE: UYANIŞ",
@@ -63,149 +61,172 @@ STORY_CHAPTERS = {
     }
 }
 
-# --- GENİŞLETİLMİŞ BÖLÜMLER (10 LEVEL) ---
-# --- HİKAYE VE BÖLÜM YAPILANDIRMASI (settings.py içindeki kısım) ---
-
-# ... (önceki kodlar aynı)
-
-# Müzikleri senin istediğin gibi ayarladık:
-# 1-9 Arası: ara1.mp3
-# 10: boss1.mp3
-# 11-14 Arası: ara2.mp3
-# 15: boss2.mp3
-
-EASY_MODE_LEVELS = {
-    1: {
-        "name": "MİDE KATMANI",
-        "goal_score": 500,  # Eskisi: 2000 (Çok daha kısa)
-        "theme_index": 3, 
-        "speed_mult": 1.0,
-        "desc": "Skorunu yükselt veya silin.",
-        "music_file": "ara1.mp3"
-    },
-    2: {
+# --- TEMALAR (GÜNCELLENDİ) ---
+# Indexler: 0:Neon, 1:Nexus, 2:Gutter, 3:Industrial, 4:Rest
+THEMES = [
+    # 0: NEON MARKET (Şehir İçi / Mavi-Mor)
+    {
         "name": "NEON PAZARI",
-        "goal_score": 1200, # Eskisi: 4000
-        "theme_index": 0,
-        "speed_mult": 1.2,
-        "desc": "Egemenlerin gölgesinden kaç.",
-        "music_file": "ara1.mp3"
+        "bg_color": (5, 5, 15),
+        "platform_color": (10, 10, 20),
+        "border_color": (0, 255, 255),
+        "player_color": (255, 255, 255),
+        "grid_color": (20, 40, 60)
     },
-    3: {
-        "name": "CAM KULELER",
-        "goal_score": 2500, # Eskisi: 8000
-        "theme_index": 1,
-        "speed_mult": 1.5,
-        "desc": "Hakikate Hicret.",
-        "music_file": "ara1.mp3"
+    # 1: NEXUS CORE (Final / Beyaz-Kırmızı)
+    {
+        "name": "NEXUS ÇEKİRDEĞİ",
+        "bg_color": (20, 20, 20),
+        "platform_color": (200, 200, 200),
+        "border_color": (255, 0, 0), # Lazer Kırmızısı
+        "player_color": (255, 215, 0), # Altın
+        "grid_color": (100, 100, 100)
     },
-    4: { 
-        "name": "DİNLENME NOKTASI ALPHA",
-        "type": "rest_area",
-        "goal_score": 0,
-        "theme_index": 4, 
-        "speed_mult": 0.0,
-        "desc": "Güvenli Bölge. Soluklan.",
-        "music_file": "ara1.mp3"
+    # 2: THE GUTTER (Çöplük / Yeşil)
+    {
+        "name": "MİDE (THE GUTTER)",
+        "bg_color": (5, 15, 5),
+        "platform_color": (10, 20, 10),
+        "border_color": (50, 200, 50), # Zehir Yeşili
+        "player_color": (100, 255, 100),
+        "grid_color": (10, 40, 10)
     },
-    5: {
-        "name": "VERİ OTOBANI",
-        "goal_score": 4000, # Eskisi: 15000
-        "theme_index": 0,
-        "speed_mult": 1.8,
-        "desc": "Hız sınırlarını aş.",
-        "music_file": "ara1.mp3"
+    # 3: INDUSTRIAL (Sanayi / Turuncu-Pas)
+    {
+        "name": "DÖKÜMHANE",
+        "bg_color": (15, 5, 0),
+        "platform_color": (30, 10, 0),
+        "border_color": (255, 100, 0), # Pas ve Ateş Turuncusu
+        "player_color": (200, 200, 200),
+        "grid_color": (50, 20, 0)
     },
-    6: {
-        "name": "BELLEK ÇÖPLÜĞÜ",
-        "goal_score": 6000, # Eskisi: 25000
-        "theme_index": 2, 
-        "speed_mult": 2.0,
-        "desc": "Silinmiş veriler arasında kaybolma.",
-        "music_file": "ara1.mp3"
-    },
-    7: {
-        "name": "KIZIL ALARM",
-        "goal_score": 9000, # Eskisi: 40000
-        "theme_index": 1,
-        "speed_mult": 2.3,
-        "desc": "Sistem seni fark etti. Kaç.",
-        "music_file": "ara1.mp3"
-    },
-    8: { 
-        "name": "DİNLENME NOKTASI OMEGA",
-        "type": "rest_area",
-        "goal_score": 0,
-        "theme_index": 4,
-        "speed_mult": 0.0,
-        "desc": "Son duraktan önceki sessizlik.",
-        "music_file": "ara1.mp3" 
-    },
-    9: {
-        "name": "EGEMENLERİN KAPISI",
-        "goal_score": 12000, # Eskisi: 60000
-        "theme_index": 1,
-        "speed_mult": 2.5,
-        "desc": "Taht odasına giden son koridor.",
-        "music_file": "ara1.mp3"
-    },
-    10: {
-        'name': 'YARGI GÜNÜ KOŞUSU',
-        'goal_score': 999999, # Skorla bitmesin, boss ölünce bitsin
-        'speed_mult': 1.3,    # HIZLI AKIŞ (Kamera artık durmuyor!)
-        'theme_index': 1,     # Kule Teması (Kırmızı/Siyah)
-        'type': 'scrolling_boss', # YENİ TİP: Bu, normal boss_fight'tan farklı.
-        'music_file': 'final_boss.mp3',
-        'no_enemies': True   # Normal düşmanlar da gelsin! (İstersen True yapabilirsin)
-    },
-    
-    # --- GİZLİ BÖLÜMLER (İKİNCİ YARI) ---
-    11: {
-        "name": "SİSTEM ÇEKİRDEĞİ",
-        "goal_score": 18000, # Eskisi: 60000
-        "theme_index": 3,
-        "speed_mult": 2.6,
-        "desc": "Vasi sana ikinci bir şans verdi.",
-        "music_file": "ara2.mp3"
-    },
-    12: {
-        "name": "VERİ AKIŞI",
-        "goal_score": 22000, # Eskisi: 70000
-        "theme_index": 0,
-        "speed_mult": 2.7,
-        "desc": "Hatalı veriler her yerde.",
-        "music_file": "ara2.mp3"
-    },
-    13: {
-        "name": "KARANLIK TÜNEL",
-        "goal_score": 26000, # Eskisi: 80000
-        "theme_index": 1,
-        "speed_mult": 2.8,
-        "desc": "Işığa ulaşmak zorundasın.",
-        "music_file": "ara2.mp3"
-    },
-    14: {
-        "name": "SON DİNLENME",
-        "type": "rest_area",
-        "goal_score": 0,
-        "theme_index": 4,
-        "speed_mult": 0.0,
-        "desc": "Büyük finalden önceki sessizlik.",
-        "music_file": "ara2.mp3"
-    },
-    15: { 
-        "name": "NİHAİ HAKİKAT",
-        "goal_score": 100000, 
-        "theme_index": 2, 
-        "speed_mult":  1.4,   # <--- HIZ VAR (Platformlar aksın)
-        "desc": "Zaman dolana kadar dayan.",
-        "music_file": "boss2.mp3",
-        "type": "normal",     # <--- BURASI ÇOK ÖNEMLİ! 'normal' olmalı ki zemin düzleşmesin.
-        "no_enemies": True    # Rastgele düşman çıkmasın, sadece Boss olsun.
+    # 4: REST AREA (Dinlenme / Sakin Mavi)
+    {
+        "name": "GÜVENLİ BÖLGE",
+        "bg_color": (10, 10, 25),
+        "platform_color": (20, 20, 40),
+        "border_color": (100, 200, 255),
+        "player_color": (200, 255, 255),
+        "grid_color": (15, 15, 30)
     }
+]
+
+# --- 30 BÖLÜMLÜK YENİ HARİTA OLUŞTURMA ---
+EASY_MODE_LEVELS = {}
+
+# ACT 1: THE GUTTER (1-5)
+# Temel mekanikleri öğrenme, yavaş tempo.
+for i in range(1, 6):
+    EASY_MODE_LEVELS[i] = {
+        "name": f"MİDE KATMANI {i}",
+        "goal_score": 1000 * i,
+        "theme_index": 2, # Yeşil Çöplük
+        "speed_mult": 1.0 + (i * 0.1),
+        "desc": "Atık tünellerinden çıkış yolu ara.",
+        "music_file": "ara1.mp3",
+        "type": "normal"
+    }
+EASY_MODE_LEVELS[1]["name"] = "UYANIŞ"
+EASY_MODE_LEVELS[5]["name"] = "ATIK POMPASI"
+
+# ACT 2: INDUSTRIAL ZONE (6-10)
+# Geri dönüşüm ve ağır sanayi. Daha hızlı, ezici engeller.
+for i in range(6, 11):
+    EASY_MODE_LEVELS[i] = {
+        "name": f"SANAYİ BÖLGESİ {i-5}",
+        "goal_score": 2000 * i,
+        "theme_index": 3, # Turuncu Sanayi
+        "speed_mult": 1.5 + ((i-5) * 0.1),
+        "desc": "Pres makineleri ve erimiş metal.",
+        "music_file": "ara1.mp3",
+        "type": "normal"
+    }
+# Level 10 - Ara Boss (Ares)
+EASY_MODE_LEVELS[10] = {
+    "name": "HURDALIK BEKÇİSİ (ARES)",
+    "goal_score": 50000,
+    "theme_index": 3,
+    "speed_mult": 1.3,
+    "desc": "Bu hurdalıktan sadece biri çıkabilir.",
+    "music_file": "final_boss.mp3", # Ares için bu müzik uygun
+    "type": "scrolling_boss", # Boss Savaşı
+    "no_enemies": False # Minionlar da gelsin
 }
 
-# --- RENKLER ---
+# ACT 3: THE CITY - Entry (11-14)
+# Çatılar ve arka sokaklar. Gizlilik hissi.
+for i in range(11, 15):
+    EASY_MODE_LEVELS[i] = {
+        "name": f"ARKA SOKAKLAR {i-10}",
+        "goal_score": 3000 * i,
+        "theme_index": 0, # Neon Mavi
+        "speed_mult": 2.0 + ((i-10) * 0.1),
+        "desc": "Güvenlik tarayıcılarından kaç.",
+        "music_file": "ara2.mp3",
+        "type": "normal"
+    }
+
+# ACT 3: THE CITY - Downtown (15-23)
+# Açık dünya hissi, hızlı akış, yoğun neon.
+for i in range(15, 24):
+    EASY_MODE_LEVELS[i] = {
+        "name": f"NEON MEYDANI {i-14}",
+        "goal_score": 4000 * i,
+        "theme_index": 0,
+        "speed_mult": 2.4 + ((i-14) * 0.05),
+        "desc": "Şehrin kalbinde hız sınırını aş.",
+        "music_file": "ara2.mp3",
+        "type": "normal"
+    }
+    
+# Level 19 - Ara Dinlenme
+EASY_MODE_LEVELS[19] = {
+    "name": "YERALTI METROSU (REST)",
+    "goal_score": 0,
+    "theme_index": 4, # Dinlenme Teması
+    "speed_mult": 0.0,
+    "desc": "Bir sonraki dalga öncesi soluklan.",
+    "music_file": "ara2.mp3", # Sakin bir müzik varsa o da olur ama akışı bozmayalım
+    "type": "rest_area"
+}
+
+# ACT 3: THE CITY - Exit (24)
+EASY_MODE_LEVELS[24] = {
+    "name": "OTOBAN ÇIKIŞI",
+    "goal_score": 100000,
+    "theme_index": 0,
+    "speed_mult": 3.0, # Çok hızlı
+    "desc": "Nexus Kulesi'ne giden son köprü.",
+    "music_file": "ara2.mp3",
+    "type": "normal"
+}
+
+# ACT 4: NEXUS CORE (25-30)
+# Steril, zor, final.
+for i in range(25, 30):
+    EASY_MODE_LEVELS[i] = {
+        "name": f"GÜVENLİK DUVARI {i-24}",
+        "goal_score": 5000 * i,
+        "theme_index": 1, # Beyaz/Kırmızı (Nexus)
+        "speed_mult": 2.8,
+        "desc": "Sistem çekirdeğine yetkisiz giriş.",
+        "music_file": "boss2.mp3", # Final gerilimi başlıyor
+        "type": "normal"
+    }
+
+# FINAL BOSS (30)
+EASY_MODE_LEVELS[30] = {
+    "name": "SİSTEM YÖNETİCİSİ (VASİ)",
+    "goal_score": 999999,
+    "theme_index": 1,
+    "speed_mult": 1.5,
+    "desc": "Nihai Hakikat.",
+    "music_file": "boss2.mp3",
+    "type": "scrolling_boss",
+    "no_enemies": True # Sadece Vasi ile 1e1
+}
+
+# --- RENKLER (GENEL) ---
 DARK_BLUE = (5, 5, 10) 
 WHITE = (220, 220, 220) 
 STAR_COLOR = (100, 100, 100)
@@ -224,10 +245,10 @@ PLAYER_SPEED = 10
 MAX_JUMPS = 2
 
 # --- DASH & SLAM AYARLARI ---
-DASH_SPEED = 90       # Eski değer: 60 (Hızlandırdık)
-DASH_DURATION = 18    # Eski değer: 12 (Süreyi 2 katına çıkardık, artık daha uzun süre kayıyor)
-DASH_COOLDOWN = 60    # Eski değer: 60 (Menzil arttı diye cooldown'ı biraz kısalttım ki daha sık kullanabil)
-SLAM_COOLDOWN_BASE = 100 # Eski değer: 120 (Slam de biraz daha sık dolsun)
+DASH_SPEED = 90       
+DASH_DURATION = 18    
+DASH_COOLDOWN = 60    
+SLAM_COOLDOWN_BASE = 100 
 
 # --- KAMERA ---
 INITIAL_CAMERA_SPEED = 5
@@ -244,55 +265,6 @@ PLATFORM_HEIGHTS = [
     LOGICAL_HEIGHT - 50 - VERTICAL_GAP,
     LOGICAL_HEIGHT - 50 - 2 * VERTICAL_GAP,
     LOGICAL_HEIGHT - 50 - 3 * VERTICAL_GAP]
-
-# TEMALAR
-THEMES = [
-    {
-        "name": "NEON PAZARI",
-        "bg_color": (5, 5, 10),
-        "platform_color": (10, 10, 15),
-        "border_color": (0, 255, 255),
-        "player_color": (255, 255, 255),
-        "grid_color": (20, 40, 50)
-    },
-    {
-        "name": "EGEMENLERİN KULESİ",
-        "bg_color": (20, 0, 0),
-        "platform_color": (30, 0, 0),
-        "border_color": (255, 50, 0),
-        "player_color": (255, 200, 0),
-        "grid_color": (60, 10, 10)
-    },
-    {
-        "name": "BELLEK ÇÖPLÜĞÜ",
-        "bg_color": (0, 0, 0),
-        "platform_color": (50, 50, 50),
-        "border_color": (150, 150, 150),
-        "player_color": (200, 255, 255), # DÜZELTME: Siyah yerine Parlak Mavi/Beyaz yapıldı
-        "player_border": (255, 255, 255),
-        "grid_color": (30, 30, 30)
-    },
-    {
-        "name": "MİDE (THE GUTTER)",
-        "bg_color": (5, 20, 5),
-        "platform_color": (0, 15, 0),
-        "border_color": (50, 200, 50),
-        "player_color": (100, 255, 100),
-        "grid_color": (10, 40, 10)
-    },
-    {
-        "name": "GÜVENLİ BÖLGE",
-        "bg_color": (10, 10, 25),
-        "platform_color": (20, 20, 40),
-        "border_color": (100, 200, 255),
-        "player_color": (200, 255, 255),
-        "grid_color": (15, 15, 30)
-    }
-
-
-    
-    
-]
 
 PLAYER_SHAPES = ['circle', 'square', 'triangle', 'hexagon']
 
@@ -314,11 +286,12 @@ LOCKED_BUTTON_COLOR = (20, 20, 20)
 LOCKED_TEXT_COLOR = (80, 80, 80)
 PAUSE_OVERLAY_COLOR = (0, 0, 0, 200)
 
-# DÜŞMAN
+# DÜŞMAN RENKLERİ
 CURSED_PURPLE = (150, 0, 255)
 CURSED_RED = (255, 0, 50)
 GLITCH_BLACK = (10, 0, 10)
 
+# --- LIMBO PROMPTLARI ---
 LIMBO_VASIL_PROMPT = """
 Sen VASİ'sin. Fragmentia sisteminin baş mimarı ve koruyucususun.
 Durum: Oyuncu (İsimsiz) çok kötü bir karma ile oynadı, her şeyi yok etti ve sonunda iradesi kırıldı.

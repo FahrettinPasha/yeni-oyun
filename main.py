@@ -9,6 +9,7 @@ import os
 import json
 import warnings
 import numpy as np
+import gc  # --- OPTİMİZASYON 2: Garbage Collector Kontrolü ---
 
 # Gereksiz uyarıları gizle
 warnings.filterwarnings("ignore", category=UserWarning, module='pygame.pkgdata')
@@ -25,9 +26,11 @@ from drawing_utils import rotate_point, draw_legendary_revolver, draw_cinematic_
 from drawing_utils import draw_background_boss_silhouette, draw_npc_chat
 from local_bosses import NexusBoss, AresBoss, VasilBoss, EnemyBullet
 
-from utils import generate_sound_effect, generate_ambient_fallback, generate_calm_ambient, load_sound_asset, draw_text, draw_animated_player, wrap_text, draw_text_with_shadow, get_silent_sound
+# --- GÜNCEL UTILS IMPORT (audio_manager eklendi) ---
+from utils import generate_sound_effect, generate_ambient_fallback, generate_calm_ambient, load_sound_asset, draw_text, draw_animated_player, wrap_text, draw_text_with_shadow, get_silent_sound, audio_manager
 from vfx import LightningBolt, FlameSpark, GhostTrail, SpeedLine, Shockwave, EnergyOrb, ParticleExplosion, ScreenFlash, SavedSoul
-from entities import Platform, Star, CursedEnemy, NPC, DroneEnemy, TankEnemy
+# YENİ: CityBackground eklendi
+from entities import Platform, Star, CursedEnemy, NPC, DroneEnemy, TankEnemy, CityBackground
 from ui_system import render_ui
 from animations import CharacterAnimator, TrailEffect
 from save_system import SaveManager
@@ -45,6 +48,11 @@ asset_paths = {
 # --- YENİ: BOSS MANAGER SİSTEMİ ---
 boss_manager_system = BossManager()
 
+# --- OPTİMİZASYON 1: UI CACHE DEĞİŞKENLERİ ---
+cached_ui_surface = None
+last_score = -1
+last_active_ui_elements = {}
+
 def trigger_guardian_interruption():
     """Karma sıfırlandığında Vasi'nin araya girip savaşı durdurması."""
     global GAME_STATE, story_manager, all_enemies
@@ -55,9 +63,10 @@ def trigger_guardian_interruption():
 
 # --- 1. SİSTEM VE EKRAN AYARLARI ---
 pygame.init()
-pygame.mixer.pre_init(44100, -16, 2, 512)
+# Mikser başlatma işlemi artık audio_manager içinde yapılıyor.
 
 current_display_w, current_display_h = LOGICAL_WIDTH, LOGICAL_HEIGHT
+# --- OPTİMİZASYON 4: V-Sync Açık ---
 screen = pygame.display.set_mode((current_display_w, current_display_h),
                                 pygame.SCALED | pygame.FULLSCREEN | pygame.DOUBLEBUF | pygame.HWSURFACE, vsync=1)
 pygame.display.set_caption("FRAGMENTIA: Hakikat ve İhanet")
@@ -67,21 +76,16 @@ game_canvas = pygame.Surface((LOGICAL_WIDTH, LOGICAL_HEIGHT))
 vfx_surface = pygame.Surface((LOGICAL_WIDTH, LOGICAL_HEIGHT), pygame.SRCALPHA)
 
 # --- 2. SES AYARLARI ---
-FX_VOLUME = 0.7
-try:
-    pygame.mixer.init()
-    AMBIENT_CHANNEL = pygame.mixer.Channel(0)
-    FX_CHANNEL = pygame.mixer.Channel(1)
-except:
-    print("Ses kartı bulunamadı veya meşgul.")
+# Ses kanalları artık audio_manager üzerinden yönetiliyor.
 
-# Ses dosyaları – volume parametresi KALDIRILDI, artık kanal seviyesinden yönetiliyor
+# Ses dosyaları
 DASH_SOUND = load_sound_asset("assets/sfx/dash.wav")
 SLAM_SOUND = load_sound_asset("assets/sfx/slam.wav")
 EXPLOSION_SOUND = get_silent_sound()
 
 current_level_music = None
-MAX_VFX_COUNT = 200
+# --- OPTİMİZASYON 3: VFX Limiti Azaltıldı ---
+MAX_VFX_COUNT = 100 # 200'den 100'e çekildi (CPU rahatlatma)
 MAX_DASH_VFX_PER_FRAME = 5
 METEOR_CORE = (255, 255, 200)
 METEOR_FIRE = (255, 80, 0)
@@ -89,21 +93,28 @@ METEOR_FIRE = (255, 80, 0)
 # --- 3. DURUM DEĞİŞKENLERİ ---
 GAME_STATE = 'MENU'
 vasil_companion = None
+city_bg = None # YENİ: Şehir Arka Planı Globali
 
+# Varsayılan ayarlar (sadece ilk çalıştırma için)
 game_settings = {
     'fullscreen': True,
     'res_index': 1,
     'fps_limit': 60,
     'fps_index': 1,
-    'sound_volume': 1.0,
-    'music_volume': 1.0,
-    'effects_volume': 1.0
+    'sound_volume': 0.7,
+    'music_volume': 0.5,
+    'effects_volume': 0.8
 }
 current_fps = 60
 
+# --- SAVE VE AYAR YÜKLEME ---
 save_manager = SaveManager()
+game_settings = save_manager.get_settings()
+# SES SİSTEMİNİ BAŞLAT VE AYARLARI UYGULA
+audio_manager.update_settings(game_settings) 
+# ---------------------------------------------------
+
 story_manager = StoryManager()
-game_settings = save_manager.get_settings()  
 philosophical_core = PhilosophicalCore()
 reality_shifter = RealityShiftSystem()
 time_layer = TimeLayerSystem()
@@ -192,7 +203,7 @@ karma_notification_text = ""
 
 rest_area_manager = RestAreaManager()
 
-# NPC ekosistemi - kalite ayarı kaldırıldığı için her zaman oluştur
+# NPC ekosistemi
 npc_ecosystem = []
 for i in range(50):
     npc = LivingNPC(i, random.randint(1, 5))
@@ -221,6 +232,7 @@ def apply_display_settings():
     else:
         current_display_w, current_display_h = target_res
         flags = pygame.DOUBLEBUF | pygame.HWSURFACE
+    # Vsync=1 her zaman aktif
     screen = pygame.display.set_mode((current_display_w, current_display_h), flags, vsync=1)
 
 def add_new_platform(start_x=None):
@@ -275,9 +287,10 @@ def start_loading_sequence(next_state_override=None):
     loading_timer = 0
     loading_stage = 0
     target_state_after_load = next_state_override if next_state_override else 'PLAYING'
-    # Kalite ayarı kaldırıldığı için sabit değerler kullanılır
     global MAX_VFX_COUNT, MAX_DASH_VFX_PER_FRAME
-    MAX_VFX_COUNT = 200
+    # --- OPTİMİZASYON: Yükleme ekranında çöp topla ---
+    gc.collect() 
+    MAX_VFX_COUNT = 100
     MAX_DASH_VFX_PER_FRAME = 5
 
 def start_story_chapter(chapter_id):
@@ -380,8 +393,7 @@ def init_limbo():
     )
     limbo_npc.ai_active = True
     npcs.append(limbo_npc)
-    try: AMBIENT_CHANNEL.stop()
-    except: pass
+    audio_manager.stop_music()
 
 def init_redemption_mode():
     global player_x, player_y, y_velocity, camera_speed, CURRENT_THEME
@@ -402,10 +414,9 @@ def init_redemption_mode():
     player_y = LOGICAL_HEIGHT - 250
     camera_speed = INITIAL_CAMERA_SPEED * 1.5
     y_velocity = 0
-    try:
-        sound = load_sound_asset("assets/music/cyber_chase.mp3", generate_ambient_fallback, 0.8)
-        AMBIENT_CHANNEL.play(sound, loops=-1)
-    except: pass
+    
+    sound = load_sound_asset("assets/music/cyber_chase.mp3", generate_ambient_fallback, 0.8)
+    audio_manager.play_music(sound)
 
 def init_genocide_mode():
     global player_x, player_y, y_velocity, camera_speed, CURRENT_THEME
@@ -426,10 +437,10 @@ def init_genocide_mode():
     camera_speed = INITIAL_CAMERA_SPEED * 1.6
     y_velocity = 0
     vasil_companion = None
-    try:
-        sound = load_sound_asset("assets/music/final_ascension.mp3", generate_ambient_fallback, 0.8)
-        AMBIENT_CHANNEL.play(sound, loops=-1)
-    except: pass
+    
+    sound = load_sound_asset("assets/music/final_ascension.mp3", generate_ambient_fallback, 0.8)
+    audio_manager.play_music(sound)
+
 
 def start_npc_conversation(npc):
     global current_npc, npc_conversation_active, npc_chat_history, GAME_STATE
@@ -447,11 +458,19 @@ def init_game():
     global CURRENT_THEME, CURRENT_SHAPE, screen_shake, dash_particles_timer, dash_angle, dash_frame_counter
     global character_state, trail_effects, last_trail_time, slam_collision_check_frames, active_damage_waves
     global CURRENT_THEME, current_level_music, npcs, current_npc, npc_conversation_active
-    global player_karma, enemies_killed_current_level, karma_notification_text, karma_notification_timer
+    global player_karma, enemies_killed_current_level, karma_notification_timer, karma_notification_text
     global active_player_speed, active_dash_cd, active_slam_cd
     global has_revived_this_run, has_talisman
     global boss_manager_system, vasil_companion
     global level_15_timer, finisher_active, finisher_state_timer, finisher_type, level_15_cutscene_played
+    global city_bg # Global city_bg'yi al
+    global cached_ui_surface, last_score # UI Cache
+
+    # --- OPTİMİZASYON: Oyun sırasında GC'yi kapat ---
+    gc.disable()
+    
+    cached_ui_surface = None
+    last_score = -1
 
     lvl_config = EASY_MODE_LEVELS.get(current_level_idx, EASY_MODE_LEVELS[1])
 
@@ -470,6 +489,9 @@ def init_game():
     npc_chat_input = ""
     npc_chat_history = []
 
+    # Şehir Arka Planını Başlat
+    city_bg = CityBackground(LOGICAL_WIDTH, LOGICAL_HEIGHT)
+
     if lvl_config.get('type') == 'rest_area':
         camera_speed = 0
         CURRENT_THEME = THEMES[4]
@@ -477,12 +499,9 @@ def init_game():
         player_x, player_y = 200.0, float(LOGICAL_HEIGHT - 180)
         y_velocity = 0
         music_file = random.choice(REST_AREA_MUSIC) if REST_AREA_MUSIC else "calm_ambient.mp3"
-        try:
-            current_level_music = load_sound_asset(f"assets/music/{music_file}", generate_calm_ambient, 0.6)
-            AMBIENT_CHANNEL.play(current_level_music, loops=-1)
-        except:
-            current_level_music = generate_calm_ambient()
-            AMBIENT_CHANNEL.play(current_level_music, loops=-1)
+        
+        current_level_music = load_sound_asset(f"assets/music/{music_file}", generate_calm_ambient, 0.6)
+        audio_manager.play_music(current_level_music)
 
     elif lvl_config.get('type') == 'boss_fight':
         pass
@@ -493,10 +512,10 @@ def init_game():
         CURRENT_THEME = THEMES[theme_idx]
         player_x, player_y = 150.0, float(LOGICAL_HEIGHT - 300)
         music_file = lvl_config.get('music_file', 'dark_ambient.mp3')
-        try:
-            current_level_music = load_sound_asset(f"assets/music/{music_file}", generate_ambient_fallback, 1.0)
-            AMBIENT_CHANNEL.play(current_level_music, loops=-1)
-        except: pass
+        
+        current_level_music = load_sound_asset(f"assets/music/{music_file}", generate_ambient_fallback, 1.0)
+        audio_manager.play_music(current_level_music)
+        
         all_platforms.empty()
         start_plat = Platform(0, LOGICAL_HEIGHT - 50, 400, 50)
         all_platforms.add(start_plat)
@@ -523,12 +542,9 @@ def init_game():
         CURRENT_THEME = THEMES[theme_idx]
         player_x, player_y = 150.0, float(LOGICAL_HEIGHT - 300)
         music_file = lvl_config.get('music_file', 'dark_ambient.mp3')
-        try:
-            current_level_music = load_sound_asset(f"assets/music/{music_file}", generate_ambient_fallback, 1.0)
-            AMBIENT_CHANNEL.play(current_level_music, loops=-1)
-        except:
-            current_level_music = generate_ambient_fallback()
-            AMBIENT_CHANNEL.play(current_level_music, loops=-1)
+        
+        current_level_music = load_sound_asset(f"assets/music/{music_file}", generate_ambient_fallback, 1.0)
+        audio_manager.play_music(current_level_music)
 
         all_platforms.empty()
         start_plat = Platform(0, LOGICAL_HEIGHT - 50, 400, 50)
@@ -602,6 +618,10 @@ def run_game_loop():
     global level_select_page, vasil_companion
     global boss_manager_system
     global level_15_timer, finisher_active, finisher_state_timer, finisher_type, level_15_cutscene_played
+    global game_settings
+    global city_bg # Global city_bg
+    # --- OPTİMİZASYON UI ---
+    global cached_ui_surface, last_score, last_active_ui_elements
 
     is_super_mode = False
     terminal_input = ""
@@ -639,6 +659,7 @@ def run_game_loop():
     level_15_cutscene_played = False
     boss_manager_system.reset()
     vasil_companion = None
+    city_bg = None
 
     while running:
         current_time = pygame.time.get_ticks()
@@ -653,6 +674,10 @@ def run_game_loop():
         scale_x = LOGICAL_WIDTH / screen.get_width()
         scale_y = LOGICAL_HEIGHT / screen.get_height()
         mouse_pos = (raw_mouse_pos[0] * scale_x, raw_mouse_pos[1] * scale_y)
+        
+        # Arka planı güncelle
+        if city_bg:
+            city_bg.update(camera_speed)
 
         if frame_count % 30 == 0:
             if len(all_vfx) > MAX_VFX_COUNT:
@@ -664,34 +689,46 @@ def run_game_loop():
 
         # --- AYARLAR MENÜSÜ İÇİN ÖZEL OLAY YÖNETİMİ (SÜRÜKLEME) ---
         if GAME_STATE == 'SETTINGS':
-            # Ayarlar menüsündeyken olayları burada işle
             for event in events:
+                if event.type == pygame.QUIT:
+                    running = False
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    save_manager.update_settings(game_settings) # Çıkarken de kaydet
+                    GAME_STATE = 'MENU'
+                
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     is_slider_clicked = False
-                    # Slider'lardan birine tıklandı mı diye kontrol et
                     for key, rect in active_ui_elements.items():
                         if key.startswith('slider_') and rect.collidepoint(mouse_pos):
                             dragging_slider = key
                             is_slider_clicked = True
-                            # Anında güncelleme için
                             slider_key_name = dragging_slider.replace('slider_', '')
                             relative_x = mouse_pos[0] - rect.x
                             value = max(0.0, min(1.0, relative_x / rect.width))
                             game_settings[slider_key_name] = value
+                            
+                            # --- SES AYARLARINI ANLIK GÜNCELLE ---
+                            audio_manager.update_settings(game_settings)
+                            # ---------------------------------------
+                            
                             break
 
-                    # Eğer bir slider'a tıklanmadıysa, diğer butonları kontrol et
                     if not is_slider_clicked:
                         if 'toggle_fullscreen' in active_ui_elements and active_ui_elements['toggle_fullscreen'].collidepoint(mouse_pos):
                             game_settings['fullscreen'] = not game_settings['fullscreen']
                         elif 'change_resolution' in active_ui_elements and active_ui_elements['change_resolution'].collidepoint(mouse_pos):
                             game_settings['res_index'] = (game_settings['res_index'] + 1) % len(AVAILABLE_RESOLUTIONS)
                         elif 'apply_changes' in active_ui_elements and active_ui_elements['apply_changes'].collidepoint(mouse_pos):
+                            save_manager.update_settings(game_settings)
+                            audio_manager.update_settings(game_settings) # Uygula butonuna da ekledik
                             apply_display_settings()
                         elif 'back' in active_ui_elements and active_ui_elements['back'].collidepoint(mouse_pos):
+                            save_manager.update_settings(game_settings)
                             GAME_STATE = 'MENU'
                         elif 'reset_progress' in active_ui_elements and active_ui_elements['reset_progress'].collidepoint(mouse_pos):
                             save_manager.reset_progress()
+                            game_settings = save_manager.get_settings()
+                            audio_manager.update_settings(game_settings)
 
                 elif event.type == pygame.MOUSEMOTION:
                     if dragging_slider:
@@ -700,12 +737,14 @@ def run_game_loop():
                         relative_x = mouse_pos[0] - slider_rect.x
                         value = max(0.0, min(1.0, relative_x / slider_rect.width))
                         game_settings[slider_key_name] = value
+                        # --- SÜRÜKLERKEN DE GÜNCELLE ---
+                        audio_manager.update_settings(game_settings)
 
                 elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     if dragging_slider:
                         save_manager.update_settings(game_settings)
                         dragging_slider = None
-
+            
             # Bu olaylar sadece ayarlar menüsü içindi, ana döngüye gitmesin.
             events = []
 
@@ -718,8 +757,7 @@ def run_game_loop():
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if GAME_STATE == 'MENU':
                     if 'story_mode' in active_ui_elements and active_ui_elements['story_mode'].collidepoint(mouse_pos):
-                        if AMBIENT_CHANNEL.get_busy():
-                            AMBIENT_CHANNEL.stop()
+                        audio_manager.stop_music()
                         ai_awakening_scene = AICutscene(screen, clock, asset_paths)
                         cutscene_finished = ai_awakening_scene.run()
                         if cutscene_finished:
@@ -775,8 +813,7 @@ def run_game_loop():
                             scenario = "BETRAYAL" if karma >= 0 else "JUDGMENT"
                             cinematic_assets = asset_paths.copy()
                             cinematic_assets['scenario'] = scenario
-                            if AMBIENT_CHANNEL.get_busy():
-                                AMBIENT_CHANNEL.stop()
+                            audio_manager.stop_music()
                             scene = AICutscene(screen, clock, cinematic_assets)
                             scene.run()
                             current_level_idx = 10
@@ -819,7 +856,7 @@ def run_game_loop():
                 if event.key == pygame.K_ESCAPE:
                     if GAME_STATE == 'PLAYING':
                         GAME_STATE = 'MENU'
-                        AMBIENT_CHANNEL.stop()
+                        audio_manager.stop_music()
                     elif GAME_STATE == 'NPC_CHAT':
                         GAME_STATE = 'PLAYING'
                         if current_npc:
@@ -833,10 +870,10 @@ def run_game_loop():
                 if event.key == pygame.K_p:
                     if GAME_STATE == 'PLAYING':
                         GAME_STATE = 'PAUSED'
-                        AMBIENT_CHANNEL.pause()
+                        audio_manager.pause_all()
                     elif GAME_STATE == 'PAUSED':
                         GAME_STATE = 'PLAYING'
-                        AMBIENT_CHANNEL.unpause()
+                        audio_manager.unpause_all()
 
                 if GAME_STATE == 'GAME_OVER' and event.key == pygame.K_r:
                     init_game()
@@ -933,7 +970,7 @@ def run_game_loop():
                         character_state = 'slamming'
                         slam_collision_check_frames = 0
                         if SLAM_SOUND:
-                            FX_CHANNEL.play(SLAM_SOUND)
+                            audio_manager.play_sfx(SLAM_SOUND)
                         all_vfx.add(ScreenFlash(PLAYER_SLAM, 80, 8))
                         all_vfx.add(Shockwave(px, py, PLAYER_SLAM, max_radius=200, rings=3, speed=25))
                         for _ in range(3):
@@ -951,7 +988,7 @@ def run_game_loop():
                         dash_frame_counter = 0.0
                         character_state = 'dashing'
                         if DASH_SOUND:
-                            FX_CHANNEL.play(DASH_SOUND)
+                            audio_manager.play_sfx(DASH_SOUND)
                         all_vfx.add(ScreenFlash(METEOR_CORE, 80, 6))
                         all_vfx.add(Shockwave(px, py, METEOR_FIRE, max_radius=120, rings=2, speed=15))
                         keys = pygame.key.get_pressed()
@@ -1092,7 +1129,7 @@ def run_game_loop():
                     karma_notification_timer = 60
                     screen_shake = 10
                     if EXPLOSION_SOUND:
-                        FX_CHANNEL.play(EXPLOSION_SOUND)
+                        audio_manager.play_sfx(EXPLOSION_SOUND)
                     all_vfx.add(ParticleExplosion(enemy.rect.centerx, enemy.rect.centery, METEOR_FIRE, 25))
                     all_vfx.add(Shockwave(enemy.rect.centerx, enemy.rect.centery, (255, 100, 0), max_radius=90, width=4))
 
@@ -1107,11 +1144,16 @@ def run_game_loop():
                 player_x += dash_vx * frame_mul
                 player_y += dash_vy * frame_mul
                 player_x -= camera_speed * frame_mul
-                dash_timer -= frame_mul
+                
+                # --- YENİ DÜZELTİLMİŞ KISIM ---
+                # Standart azalma
+                dash_timer -= frame_mul 
+                
+                # Eğer Vasil yoksa süre ekstra azalsın (Normal Dash daha kısadır)
+                # Eğer Vasil varsa bu if'e girmez, dash süresi daha uzun sürer ama SONSUZ OLMAZ.
                 if not vasil_companion:
-                    dash_timer -= frame_mul
-                else:
-                    dash_timer = DASH_DURATION
+                    dash_timer -= frame_mul 
+                # -----------------------------
 
                 if dash_timer <= 0:
                     is_dashing = False
@@ -1213,7 +1255,7 @@ def run_game_loop():
                         karma_notification_timer = 60
                     screen_shake = 15
                     if EXPLOSION_SOUND:
-                        FX_CHANNEL.play(EXPLOSION_SOUND)
+                        audio_manager.play_sfx(EXPLOSION_SOUND)
                     all_vfx.add(ParticleExplosion(enemy.rect.centerx, enemy.rect.centery, CURSED_PURPLE, 20))
                     all_vfx.add(Shockwave(enemy.rect.centerx, enemy.rect.centery, GLITCH_BLACK, max_radius=80, width=5))
                     pygame.time.delay(30)
@@ -1239,7 +1281,8 @@ def run_game_loop():
                         else:
                             GAME_STATE = 'GAME_OVER'
                             high_score = max(high_score, int(score))
-                            AMBIENT_CHANNEL.stop()
+                            save_manager.update_high_score('easy_mode', current_level_idx, score)
+                            audio_manager.stop_music()
                             all_vfx.add(ParticleExplosion(player_x, player_y, CURSED_RED, 30))
 
             move_rect = pygame.Rect(int(player_x), int(min(old_y, player_y)), PLAYER_W, int(abs(player_y - old_y)) + PLAYER_H)
@@ -1311,14 +1354,15 @@ def run_game_loop():
             if current_level_idx == 15:
                 if not level_15_cutscene_played:
                     level_15_cutscene_played = True
-                    if AMBIENT_CHANNEL.get_busy(): AMBIENT_CHANNEL.stop()
+                    audio_manager.stop_music()
                     cinematic_assets = asset_paths.copy()
                     cinematic_assets['scenario'] = 'FINAL_MEMORY'
                     AICutscene(screen, clock, cinematic_assets).run()
                     last_time = pygame.time.get_ticks()
                     level_15_timer = 0
-                    try: AMBIENT_CHANNEL.play(load_sound_asset("assets/music/final_boss.mp3", generate_ambient_fallback, 1.0), loops=-1)
-                    except: pass
+                    
+                    sound = load_sound_asset("assets/music/final_boss.mp3", generate_ambient_fallback, 1.0)
+                    audio_manager.play_music(sound)
 
                 if not finisher_active:
                     level_15_timer += dt
@@ -1329,8 +1373,7 @@ def run_game_loop():
                         finisher_active = True
                         finisher_state_timer = 0.0
                         finisher_type = 'GOOD' if player_karma >= 0 else 'BAD'
-                        if AMBIENT_CHANNEL.get_busy():
-                            AMBIENT_CHANNEL.stop()
+                        audio_manager.stop_music()
                         screen_shake = 50
 
                 if finisher_active:
@@ -1418,7 +1461,7 @@ def run_game_loop():
                         else:
                             GAME_STATE = 'GAME_OVER'
                             save_manager.update_high_score('easy_mode', current_level_idx, score)
-                            AMBIENT_CHANNEL.stop()
+                            audio_manager.stop_music()
                     else:
                         karma_notification_text = "İRADE HASAR ALDI!"
                         karma_notification_timer = 40
@@ -1467,8 +1510,7 @@ def run_game_loop():
                         break
                 if not boss_alive and current_level_idx == 15:
                     score += 150000
-                    if AMBIENT_CHANNEL.get_busy():
-                        AMBIENT_CHANNEL.stop()
+                    audio_manager.stop_music()
                     final_karma = save_manager.get_karma()
                     ending_scenario = "GOOD_ENDING" if final_karma >= 0 else "BAD_ENDING"
                     ending_assets = asset_paths.copy()
@@ -1509,7 +1551,7 @@ def run_game_loop():
                     GAME_STATE = 'GAME_OVER'
                     high_score = max(high_score, int(score))
                     save_manager.update_high_score('easy_mode', current_level_idx, score)
-                    AMBIENT_CHANNEL.stop()
+                    audio_manager.stop_music()
                     all_vfx.add(ParticleExplosion(player_x, player_y, (255, 0, 0), 30))
 
             if player_x < -50:
@@ -1524,7 +1566,7 @@ def run_game_loop():
                     GAME_STATE = 'GAME_OVER'
                     high_score = max(high_score, int(score))
                     save_manager.update_high_score('easy_mode', current_level_idx, score)
-                    AMBIENT_CHANNEL.stop()
+                    audio_manager.stop_music()
                     all_vfx.add(ParticleExplosion(player_x, player_y, (255, 0, 0), 30))
 
             rest_area_manager.update((player_x, player_y))
@@ -1588,6 +1630,11 @@ def run_game_loop():
                 game_canvas.fill(era_data.get('bg_color', CURRENT_THEME["bg_color"]))
             else:
                 game_canvas.fill(CURRENT_THEME["bg_color"])
+            
+            # --- YENİ ÇİZİM SIRASI ---
+            # Şehir Arka Planını Çiz (Fill'den sonra, Yıldızlardan Önce)
+            if city_bg:
+                city_bg.draw(game_canvas)
 
             for s in stars:
                 s.draw(game_canvas)
@@ -1680,13 +1727,27 @@ def run_game_loop():
                         game_canvas.blit(text_surf, (40, y_offset))
                         y_offset += 25
 
-            # NPC ekosistemi her zaman çizilir (kalite ayarı kaldırıldı)
             for npc in npc_ecosystem:
                 if abs(npc.x - player_x) < 500 and abs(npc.y - player_y) < 400:
                     npc.draw(game_canvas, render_offset)
 
+            # --- OPTİMİZASYON: UI CACHING ---
             if GAME_STATE not in ['CHAT', 'CUTSCENE']:
-                active_ui_elements = render_ui(game_canvas, GAME_STATE, ui_data, mouse_pos)
+                # Skor değişti mi veya cache yok mu? VEYA her 10 karede bir (cooldown barları için)
+                current_score_int = int(score)
+                should_update_ui = (cached_ui_surface is None) or \
+                                   (current_score_int != last_score) or \
+                                   (frame_count % 10 == 0) # Barların akıcı olması için minik güncelleme
+                
+                if should_update_ui:
+                    last_score = current_score_int
+                    cached_ui_surface = pygame.Surface((LOGICAL_WIDTH, LOGICAL_HEIGHT), pygame.SRCALPHA)
+                    # UI'yı cache yüzeyine çiz
+                    last_active_ui_elements = render_ui(cached_ui_surface, GAME_STATE, ui_data, mouse_pos)
+                
+                # Cache'i ekrana bas (Çok hızlıdır)
+                game_canvas.blit(cached_ui_surface, (0, 0))
+                active_ui_elements = last_active_ui_elements
 
         target_res = AVAILABLE_RESOLUTIONS[game_settings['res_index']]
         if game_settings['fullscreen']:
@@ -1698,27 +1759,23 @@ def run_game_loop():
         else:
             final_game_image = pygame.transform.scale(game_canvas, screen.get_size())
 
-        # --- SES SEVİYELERİNİ HER KAREDE UYGULA (DÜZELTİLMİŞ VERSİYON) ---
-        # Ayarları dosyadan değil, doğrudan hafızadaki güncel `game_settings`'ten alıyoruz.
+        # --- SES SEVİYELERİNİ HER KAREDE UYGULA ---
+        # Artık doğru 'game_settings' üzerinden çalışıyor.
         master_vol = game_settings.get("sound_volume", 0.7)
         music_vol = game_settings.get("music_volume", 0.5)
         effects_vol = game_settings.get("effects_volume", 0.8)
 
-        # Müzik kanalının sesini ayarla
         if 'AMBIENT_CHANNEL' in locals() and AMBIENT_CHANNEL:
             try:
                 AMBIENT_CHANNEL.set_volume(master_vol * music_vol)
-            except Exception as e:
-                pass  # Kanal yoksa veya hata verirse görmezden gel
+            except Exception:
+                pass
 
-        # SES EFEKTİ KANALININ sesini ayarla (EN ÖNEMLİ DEĞİŞİKLİK)
         if 'FX_CHANNEL' in locals() and FX_CHANNEL:
             try:
                 FX_CHANNEL.set_volume(master_vol * effects_vol)
-            except Exception as e:
-                pass  # Kanal yoksa veya hata verirse görmezden gel
-
-        # Artık her bir ses nesnesinin sesini ayrıca ayarlamaya gerek yok.
+            except Exception:
+                pass
 
         screen.blit(final_game_image, (0, 0))
         pygame.display.flip()

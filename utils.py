@@ -3,9 +3,87 @@ import random
 import math
 import numpy as np
 import os
-# --- SİSTEM FONKSİYONLARI ---
+
+# --- GELİŞMİŞ SES YÖNETİCİSİ (BU SINIF TÜM SESİ YÖNETECEK) ---
+class AudioManager:
+    def __init__(self):
+        try:
+            pygame.mixer.init(44100, -16, 2, 512)
+            pygame.mixer.set_num_channels(32) # Efektler için bol kanal
+        except:
+            print("Ses kartı başlatılamadı.")
+
+        # Kanalları ayır
+        self.music_channel = pygame.mixer.Channel(0) # Müzik her zaman Kanal 0
+        
+        # Ses seviyeleri (Varsayılan)
+        self.master_vol = 1.0
+        self.music_vol = 0.5
+        self.sfx_vol = 0.8
+
+    def update_settings(self, settings_dict):
+        """Ayarlar menüsünden gelen veriyi anında işler"""
+        self.master_vol = settings_dict.get("sound_volume", 1.0)
+        self.music_vol = settings_dict.get("music_volume", 0.5)
+        self.sfx_vol = settings_dict.get("effects_volume", 0.8)
+        self._apply_volumes()
+
+    def _apply_volumes(self):
+        """Matematiksel olarak sesleri uygular: Master * Özel Seviye"""
+        # Müzik Kanalı Ses Ayarı
+        final_music_vol = self.master_vol * self.music_vol
+        self.music_channel.set_volume(final_music_vol)
+        
+        # Efektler için genel bir ayar yok, bu yüzden çalan/çalacak sesleri etkilemeliyiz
+        # Ancak Pygame'de SFX kanalları dinamik olduğu için,
+        # Sesi çalarken o anki volume ile çalacağız.
+
+    def play_music(self, sound_obj, loops=-1):
+        """Müziği güvenli şekilde çalar"""
+        if not sound_obj: return
+        
+        # Eğer zaten aynı müzik çalıyorsa baştan başlatma (isteğe bağlı)
+        # Ama burada basitçe kanalı durdurup yenisini çalıyoruz
+        if self.music_channel.get_busy():
+            self.music_channel.stop()
+            
+        self.music_channel.play(sound_obj, loops=loops)
+        self._apply_volumes() # Sesi ayarla
+
+    def play_sfx(self, sound_obj):
+        """Efekt sesini boş bir kanalda çalar"""
+        if not sound_obj: return
+        
+        # Boş bir kanal bul
+        channel = pygame.mixer.find_channel(True) 
+        if channel:
+            # Kanal 0 Müzik için ayrıldı, onu kullanma
+            if channel == self.music_channel:
+                channel = pygame.mixer.find_channel(True) 
+
+            # Ses seviyesini hesapla: Master * SFX
+            final_sfx_vol = self.master_vol * self.sfx_vol
+            channel.set_volume(final_sfx_vol)
+            channel.play(sound_obj)
+
+    def stop_music(self):
+        self.music_channel.stop()
+
+    def pause_all(self):
+        pygame.mixer.pause()
+
+    def unpause_all(self):
+        pygame.mixer.unpause()
+
+# Global Instance (Main.py buradan erişecek)
+audio_manager = AudioManager()
+
+
+# --- SİSTEM FONKSİYONLARI (GÜNCELLENDİ: ARTIK VOLUME HARDCODE EDİLMİYOR) ---
 
 def generate_sound_effect(base_freq, duration, volume=1.0):
+    # NOT: Volume parametresini artık dikkate almıyoruz, 
+    # çünkü ses seviyesini AudioManager yönetecek. Ham sesi tam güçte üretiyoruz.
     try:
         sample_rate = 44100
         t = np.linspace(0, duration, int(sample_rate * duration), False)
@@ -26,13 +104,9 @@ def generate_sound_effect(base_freq, duration, volume=1.0):
         wave = (wave * 32767).astype(np.int16)
         wave = np.repeat(wave.reshape(-1, 1), 2, axis=1)
         sound = pygame.sndarray.make_sound(wave)
-        sound.set_volume(volume * 0.7)
         return sound
     except Exception as e:
-        print(f"Ses oluşturma hatası: {e}")
-        silent = pygame.mixer.Sound(buffer=bytes([0, 0]))
-        silent.set_volume(0)
-        return silent
+        return get_silent_sound()
 
 def generate_ambient_fallback():
     try:
@@ -51,50 +125,36 @@ def generate_ambient_fallback():
         wave = (wave * 32767 * 0.3).astype(np.int16)
         wave = np.repeat(wave.reshape(-1, 1), 2, axis=1)
         sound = pygame.sndarray.make_sound(wave)
-        sound.set_volume(0.4)
         return sound
     except Exception:
-        silent = pygame.mixer.Sound(buffer=bytes([0, 0]))
-        return silent
+        return get_silent_sound()
 
 def generate_calm_ambient():
-    """Dinlenme alanı için huzurlu müzik"""
     try:
         sample_rate = 44100
         duration = 15.0
         t = np.linspace(0, duration, int(sample_rate * duration), False)
-        
-        # Sakin drone
         base_freq = 110.0
         wave = 0.3 * np.sin(2 * np.pi * base_freq * t)
         wave += 0.2 * np.sin(2 * np.pi * base_freq * 1.5 * t)
-        
-        # Zarf
         envelope = np.ones_like(t)
         fade = int(sample_rate * 3.0)
         if fade > 0:
             envelope[:fade] = np.linspace(0, 1, fade)
             envelope[-fade:] = np.linspace(1, 0, fade)
-        
         wave = wave * envelope
         wave = (wave * 32767 * 0.25).astype(np.int16)
         wave = np.repeat(wave.reshape(-1, 1), 2, axis=1)
-        
         sound = pygame.sndarray.make_sound(wave)
-        sound.set_volume(0.4)
         return sound
     except:
         return generate_ambient_fallback()
 
-
 def get_silent_sound():
-    """Hata durumunda kullanılacak boş, sessiz bir ses nesnesi döndürür."""
     try:
-        # Çok kısa, sessiz bir buffer oluştur
         buffer = bytearray([0] * 200) 
         return pygame.mixer.Sound(buffer=buffer)
     except:
-        # Eğer bu bile çalışmazsa (örn: mixer init edilmediyse) Mock bir sınıf döndür
         class MockSound:
             def play(self, *args, **kwargs): pass
             def set_volume(self, v): pass
@@ -102,30 +162,19 @@ def get_silent_sound():
         return MockSound()
 
 def load_sound_asset(filepath, fallback_generator=None, volume=1.0):
-    """
-    Dosyayı yüklemeye çalışır. 
-    Dosya yoksa, bozuksa veya formatı (MP3/WAV) Pygame tarafından sevilmezse
-    OYUNU ÇÖKERTMEZ, sessiz bir nesne döndürür.
-    """
-    
-    # 1. Dosya yolu kontrolü
+    # NOT: Buradaki volume parametresi artık sadece 'dosya sesi çok yüksekse kısmak' için kullanılmalı.
+    # Ana kontrol Audio Manager'da.
     if not os.path.exists(filepath):
-        print(f"[SES UYARISI] Dosya bulunamadı, sessiz mod: {filepath}")
+        if fallback_generator: return fallback_generator()
         return get_silent_sound()
-
-    # 2. Yükleme Denemesi
     try:
         sound = pygame.mixer.Sound(filepath)
-        sound.set_volume(volume)
         return sound
-    except Exception as e:
-        # "Unrecognized audio format" veya başka bir hata alınırsa burası çalışır
-        print(f"[SES HATASI] Dosya bozuk veya desteklenmiyor ({filepath}): {e}")
-        print(f"-> {filepath} için sessiz mod devrede.")
+    except Exception:
+        if fallback_generator: return fallback_generator()
         return get_silent_sound()
 
-# --- ÇİZİM FONKSİYONLARI ---
-
+# --- ÇİZİM FONKSİYONLARI (DEĞİŞMEDİ) ---
 def draw_text(surface, text, color, rect, font_size, aa=False, bkg=None):
     try:
         font = pygame.font.Font(None, font_size)
@@ -137,33 +186,25 @@ def draw_text(surface, text, color, rect, font_size, aa=False, bkg=None):
         pygame.draw.rect(surface, color, rect, 1)
 
 def draw_text_with_shadow(surface, text, font, pos, color, shadow_color=(0, 0, 0), offset=(2, 2), align='topleft'):
-    """Metni gölgeli çizer"""
     try:
         text_surf = font.render(text, True, color)
         shadow_surf = font.render(text, True, shadow_color)
-        
-        # Hizalama işlemi
         text_rect = text_surf.get_rect()
         shadow_rect = shadow_surf.get_rect()
-        
-        # Align attribute'unu ayarla
         if hasattr(text_rect, align):
             setattr(text_rect, align, pos)
             shadow_pos = (getattr(text_rect, align)[0] + offset[0], 
                          getattr(text_rect, align)[1] + offset[1])
             setattr(shadow_rect, align, shadow_pos)
         else:
-            # Varsayılan: topleft
             text_rect.topleft = pos
             shadow_rect.topleft = (pos[0] + offset[0], pos[1] + offset[1])
-        
         surface.blit(shadow_surf, shadow_rect)
         surface.blit(text_surf, text_rect)
     except Exception as e:
         print(f"Shadow text error: {e}")
 
 def wrap_text(text, font, max_width):
-    """Metni satırlara böler"""
     words = text.split(' ')
     lines = []
     current_line = []
@@ -184,16 +225,12 @@ def draw_animated_player(surface, shape, x, y, size, color, anim_params):
         rotation = anim_params.get('rotation', 0)
         pulse_alpha = anim_params.get('pulse_alpha', 1.0)
         shake_offset = anim_params.get('shake_offset', (0, 0))
-        
         x += shake_offset[0]
         y += shake_offset[1]
-        
         r, g, b = color
         pulse_factor = 0.5 + 0.5 * pulse_alpha
         anim_color = (min(255, int(r * pulse_factor)), min(255, int(g * pulse_factor)), min(255, int(b * pulse_factor)))
-        
         scaled_size = int(size * scale)
-        
         if shape == 'circle':
             pygame.draw.circle(surface, anim_color, (int(x), int(y)), scaled_size)
             inner_color = (min(255, anim_color[0] + 50), min(255, anim_color[1] + 50), min(255, anim_color[2] + 50))
@@ -203,7 +240,6 @@ def draw_animated_player(surface, shape, x, y, size, color, anim_params):
             pygame.draw.rect(surface, anim_color, rect)
         else:
             pygame.draw.circle(surface, anim_color, (int(x), int(y)), scaled_size)
-            
     except Exception as e:
         pygame.draw.circle(surface, color, (int(x), int(y)), size)
 

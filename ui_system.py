@@ -5,8 +5,10 @@ from settings import *
 from utils import draw_text_with_shadow, wrap_text
 from story_system import ai_chat_effect
 
+# --- YARDIMCI GRAFİK FONKSİYONLARI ---
+
 def draw_glitch_text(surface, text, size, x, y, color, intensity=2):
-    """Glitch efekti ile metin çizer (Varsayılan: Center)"""
+    """Glitch efekti ile metin çizer"""
     font = pygame.font.Font(None, size)
     if random.random() < 0.1:
         off_x = random.randint(-intensity, intensity)
@@ -37,7 +39,7 @@ def draw_cyber_panel(surface, rect, color, title=""):
                              (title_rect.x + 10, title_rect.centery), (0, 0, 0), align='midleft')
 
 def draw_button(surface, rect, text, is_hovered, color_theme=BUTTON_COLOR, locked=False):
-    """Buton çizer"""
+    """Standart Buton çizer"""
     color = BUTTON_HOVER_COLOR if is_hovered else color_theme
     border = WHITE if is_hovered else (100, 100, 100)
     text_col = BUTTON_TEXT_COLOR
@@ -67,6 +69,83 @@ def draw_button(surface, rect, text, is_hovered, color_theme=BUTTON_COLOR, locke
     if not locked:
         text_col = WHITE if is_hovered else BUTTON_TEXT_COLOR
     draw_text_with_shadow(surface, text, font, draw_rect.center, text_col)
+
+def draw_cyber_rect(surface, rect, color, filled=False, alpha=255):
+    """Köşeleri kesik, teknolojik dikdörtgen çizer"""
+    corner_size = 10
+    points = [
+        (rect.x + corner_size, rect.y),
+        (rect.right - corner_size, rect.y),
+        (rect.right, rect.y + corner_size),
+        (rect.right, rect.bottom - corner_size),
+        (rect.right - corner_size, rect.bottom),
+        (rect.left + corner_size, rect.bottom),
+        (rect.left, rect.bottom - corner_size),
+        (rect.left, rect.y + corner_size)
+    ]
+    
+    if filled:
+        s = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
+        pygame.draw.polygon(s, (*color, alpha), points)
+        surface.blit(s, (0,0))
+    else:
+        pygame.draw.polygon(surface, color, points, 2)
+
+def draw_level_card(surface, rect, level_num, level_info, status, high_score, is_hovered):
+    """Bölüm Kartı (Biraz daha kompakt)"""
+    base_color = UI_BORDER_COLOR
+    bg_alpha = 40
+    
+    if status == "LOCKED":
+        base_color = (60, 60, 60)
+        bg_alpha = 20
+        text_color = (120, 120, 120)
+    elif status == "COMPLETED":
+        base_color = NEON_GREEN
+        bg_alpha = 70
+        text_color = WHITE
+    elif status == "BOSS":
+        base_color = (255, 50, 50)
+        bg_alpha = 90
+        text_color = (255, 200, 200)
+    else: # UNLOCKED
+        base_color = NEON_CYAN
+        bg_alpha = 60
+        text_color = WHITE
+
+    draw_rect = rect.copy()
+    if is_hovered and status != "LOCKED":
+        draw_rect.inflate_ip(6, 6)
+        base_color = (min(255, base_color[0]+50), min(255, base_color[1]+50), min(255, base_color[2]+50))
+        bg_alpha = 120
+
+    draw_cyber_rect(surface, draw_rect, base_color, filled=True, alpha=bg_alpha)
+    draw_cyber_rect(surface, draw_rect, base_color, filled=False)
+
+    center_x = draw_rect.centerx
+    
+    # Bölüm No
+    num_font = pygame.font.Font(None, 80)
+    if status != "LOCKED":
+        num_surf = num_font.render(f"{level_num}", True, (*base_color, 40))
+        surface.blit(num_surf, (draw_rect.right - 50, draw_rect.bottom - 50))
+
+    # Bölüm Adı
+    name_font = pygame.font.Font(None, 24)
+    display_name = level_info['name']
+    if status == "LOCKED": display_name = "ERİŞİM YOK"
+    if len(display_name) > 18: display_name = display_name[:16] + "..."
+    
+    draw_text_with_shadow(surface, display_name, name_font, (center_x, draw_rect.y + 25), text_color, align="center")
+
+    # Skor
+    if status != "LOCKED" and high_score > 0:
+        score_font = pygame.font.Font(None, 20)
+        draw_text_with_shadow(surface, f"★ {high_score}", score_font, (center_x, draw_rect.bottom - 20), (255, 215, 0), align="center")
+    elif status == "LOCKED":
+        draw_text_with_shadow(surface, "🔒", pygame.font.Font(None, 40), (center_x, draw_rect.centery), (100, 50, 50), align="center")
+
+    return draw_rect
 
 # --- SAHNE FONKSİYONLARI ---
 
@@ -261,11 +340,8 @@ def render_main_menu(surface, mouse_pos, buttons):
     return active_buttons
 
 def render_level_select(surface, mouse_pos, save_data, page_index=0):
-    """Bölüm Seçimi Ekranı - SAYFALAMA SİSTEMİ EKLENDİ"""
     w, h = surface.get_width(), surface.get_height()
     surface.fill(UI_BG_COLOR)
-    
-    draw_glitch_text(surface, "BÖLÜM SEÇİMİ", 100, w//2, 80, UI_BORDER_COLOR)
     
     active_buttons = {}
     
@@ -273,73 +349,168 @@ def render_level_select(surface, mouse_pos, save_data, page_index=0):
         easy_data = {'unlocked_levels': 1, 'completed_levels': [], 'high_scores': {}}
     else:
         easy_data = save_data['easy_mode']
-        
-    unlocked = easy_data['unlocked_levels']
     
-    ITEMS_PER_PAGE = 4
-    all_levels = list(EASY_MODE_LEVELS.items())
-    total_pages = math.ceil(len(all_levels) / ITEMS_PER_PAGE)
-    
-    start_idx = page_index * ITEMS_PER_PAGE
-    end_idx = min(start_idx + ITEMS_PER_PAGE, len(all_levels))
-    current_page_levels = all_levels[start_idx:end_idx]
-    
-    start_y = 180
-    
-    for lvl_num, lvl_info in current_page_levels:
-        is_locked = lvl_num > unlocked
-        is_completed = lvl_num in easy_data['completed_levels']
-        
-        btn_rect = pygame.Rect(w//2 - 350, start_y, 700, 100)
-        
-        panel_col = UI_BORDER_COLOR
-        if is_locked:
-            panel_col = (50, 50, 50)
-        elif is_completed:
-            panel_col = NEON_GREEN
-        
-        draw_cyber_panel(surface, btn_rect, panel_col, f"BÖLÜM {lvl_num}")
-        
-        name_col = WHITE if not is_locked else LOCKED_TEXT_COLOR
-        name_font = pygame.font.Font(None, 40)
-        desc_font = pygame.font.Font(None, 25)
-        
-        draw_text_with_shadow(surface, lvl_info['name'], name_font,
-                             (btn_rect.x + 40, btn_rect.centery - 15), name_col, align='midleft')
-        draw_text_with_shadow(surface, lvl_info.get('desc', 'Açıklama Yok'), desc_font,
-                     (btn_rect.x + 40, btn_rect.centery + 20), (150, 150, 150), align='midleft')
-        play_btn_rect = pygame.Rect(btn_rect.right - 150, btn_rect.centery - 30, 120, 60)
-        btn_text = "BAŞLA" if not is_locked else "KİLİTLİ"
-        if is_completed:
-            btn_text = "TEKRAR"
-            
-        draw_button(surface, play_btn_rect, btn_text, 
-                   play_btn_rect.collidepoint(mouse_pos) and not is_locked, 
-                   locked=is_locked)
-        
-        if not is_locked:
-            active_buttons[f'level_{lvl_num}'] = play_btn_rect
-            
-        start_y += 120
+    unlocked_lvl = easy_data['unlocked_levels']
 
-    nav_y = h - 100
+    # --- YAPILANDIRMA: ACT ve GRUPLAR ---
+    # Sayfa (Page) artık ACT anlamına geliyor.
+    # 0: ACT 1 (Gutter, Industrial)
+    # 1: ACT 2 (Back Alleys, Downtown, Highway)
+    # 2: ACT 3 (Core, Final)
     
+    ACTS = [
+        {
+            "title": "ACT I: YERALTI KÖKLERİ",
+            "color": (50, 255, 100),
+            "groups": [
+                {"name": "THE GUTTER (ÇÖPLÜK)", "levels": range(1, 6), "theme_col": (50, 200, 50)},
+                {"name": "INDUSTRIAL ZONE (SANAYİ)", "levels": range(6, 11), "theme_col": (255, 100, 0)}
+            ]
+        },
+        {
+            "title": "ACT II: NEON METROPOL",
+            "color": (0, 200, 255),
+            "groups": [
+                {"name": "THE SLUMS (VAROŞLAR)", "levels": range(11, 15), "theme_col": (0, 100, 200)},
+                {"name": "NEON DOWNTOWN (MERKEZ)", "levels": range(15, 24), "theme_col": (200, 0, 255)},
+                {"name": "HIGHWAY (ÇIKIŞ)", "levels": range(24, 25), "theme_col": (255, 255, 255)}
+            ]
+        },
+        {
+            "title": "ACT III: SİSTEMİN KALBİ",
+            "color": (255, 50, 50),
+            "groups": [
+                {"name": "FIREWALL (GÜVENLİK)", "levels": range(25, 30), "theme_col": (200, 50, 50)},
+                {"name": "THE CORE (ÇEKİRDEK)", "levels": range(30, 31), "theme_col": (255, 215, 0)}
+            ]
+        }
+    ]
+    
+    # Sayfa Sınırları
+    if page_index < 0: page_index = 0
+    if page_index >= len(ACTS): page_index = len(ACTS) - 1
+    
+    current_act = ACTS[page_index]
+    
+    # --- ÜST MENÜ (SEKMELER) ---
+    tab_w = 300
+    tab_h = 50
+    start_tab_x = (w - (len(ACTS) * tab_w)) // 2
+    
+    for i, act in enumerate(ACTS):
+        tab_rect = pygame.Rect(start_tab_x + (i * tab_w), 40, tab_w - 10, tab_h)
+        is_active = (i == page_index)
+        
+        # Sekme Rengi
+        bg_col = act['color'] if is_active else (40, 40, 40)
+        alpha = 200 if is_active else 100
+        
+        draw_cyber_rect(surface, tab_rect, bg_col, filled=True, alpha=alpha)
+        
+        text_col = WHITE if is_active else (150, 150, 150)
+        font = pygame.font.Font(None, 30)
+        draw_text_with_shadow(surface, act['title'], font, tab_rect.center, text_col, align="center")
+    
+    # --- İÇERİK ALANI ---
+    content_start_y = 130
+    current_y = content_start_y
+    
+    # Kart Boyutları
+    card_w = 200
+    card_h = 110
+    card_gap_x = 30
+    card_gap_y = 20
+    
+    for group in current_act['groups']:
+        # Grup Başlığı
+        header_rect = pygame.Rect(100, current_y, w - 200, 40)
+        
+        # Başlık Çizgisi
+        pygame.draw.line(surface, group['theme_col'], (50, current_y + 20), (w - 50, current_y + 20), 2)
+        
+        # Başlık Metni (Arkaplanlı)
+        title_surf = pygame.font.Font(None, 35).render(f" {group['name']} ", True, group['theme_col'])
+        title_bg = title_surf.get_rect(center=(w//2, current_y + 20))
+        pygame.draw.rect(surface, UI_BG_COLOR, title_bg) # Çizgiyi kesmek için
+        surface.blit(title_surf, title_bg)
+        
+        current_y += 60 # Kartlar için aşağı in
+        
+        # Kartları Grid Olarak Yerleştir
+        levels = list(group['levels'])
+        
+        # Sütun sayısını dinamik yapmayalım, sabit 6 olsun ki düzenli dursun
+        cols = 6
+        
+        # Bu grubun satır sayısını hesapla
+        rows = math.ceil(len(levels) / cols)
+        
+        # Grubu ortalamak için başlangıç X
+        group_width = (cols * card_w) + ((cols - 1) * card_gap_x)
+        # Ama eğer az kart varsa (örn 1 tane), sola yaslı değil ortalı dursun
+        actual_cols = min(len(levels), cols)
+        actual_width = (actual_cols * card_w) + ((actual_cols - 1) * card_gap_x)
+        start_x = (w - actual_width) // 2
+        
+        for i, lvl_num in enumerate(levels):
+            # Grid mat matematiği
+            col = i % cols
+            row = i // cols
+            
+            x = start_x + (col * (card_w + card_gap_x))
+            y = current_y + (row * (card_h + card_gap_y))
+            
+            card_rect = pygame.Rect(x, y, card_w, card_h)
+            
+            # Level Verisi
+            lvl_info = EASY_MODE_LEVELS.get(lvl_num, {'name': 'BİLİNMEYEN', 'type': 'normal'})
+            
+            # Durum Kontrolü
+            status = "LOCKED"
+            if lvl_num <= unlocked_lvl:
+                status = "UNLOCKED"
+                if lvl_num in easy_data['completed_levels']:
+                    status = "COMPLETED"
+                if lvl_info.get('type') in ['scrolling_boss', 'boss_fight']:
+                    status = "BOSS"
+                    if lvl_num > unlocked_lvl: status = "LOCKED"
+
+            h_score = easy_data['high_scores'].get(str(lvl_num), 0)
+            is_hover = card_rect.collidepoint(mouse_pos)
+            
+            # Kartı Çiz
+            final_rect = draw_level_card(surface, card_rect, lvl_num, lvl_info, status, h_score, is_hover)
+            
+            if status != "LOCKED":
+                active_buttons[f'level_{lvl_num}'] = final_rect
+        
+        # Bir sonraki grup için Y koordinatını güncelle
+        current_y += (rows * (card_h + card_gap_y)) + 40 # Grup boşluğu
+
+    # --- ALT NAVİGASYON ---
+    nav_y = h - 60
+    
+    # Navigasyon butonları (Yön okları)
     if page_index > 0:
-        btn_prev = pygame.Rect(w//2 - 250, nav_y, 200, 50)
-        draw_button(surface, btn_prev, "<< ÖNCEKİ", btn_prev.collidepoint(mouse_pos))
+        btn_prev = pygame.Rect(40, h//2 - 50, 60, 100) # Sol kenarda dikey buton
+        is_h = btn_prev.collidepoint(mouse_pos)
+        col = BUTTON_HOVER_COLOR if is_h else (30, 30, 30)
+        draw_cyber_rect(surface, btn_prev, col, filled=True)
+        draw_text_with_shadow(surface, "<", pygame.font.Font(None, 60), btn_prev.center, WHITE, align="center")
         active_buttons['prev_page'] = btn_prev
-        
-    page_font = pygame.font.Font(None, 35)
-    draw_text_with_shadow(surface, f"SAYFA {page_index + 1} / {total_pages}", page_font,
-                         (w//2, nav_y + 25), WHITE, align='center')
-        
-    if page_index < total_pages - 1:
-        btn_next = pygame.Rect(w//2 + 50, nav_y, 200, 50)
-        draw_button(surface, btn_next, "SONRAKİ >>", btn_next.collidepoint(mouse_pos))
+
+    if page_index < len(ACTS) - 1:
+        btn_next = pygame.Rect(w - 100, h//2 - 50, 60, 100) # Sağ kenarda dikey buton
+        is_h = btn_next.collidepoint(mouse_pos)
+        col = BUTTON_HOVER_COLOR if is_h else (30, 30, 30)
+        draw_cyber_rect(surface, btn_next, col, filled=True)
+        draw_text_with_shadow(surface, ">", pygame.font.Font(None, 60), btn_next.center, WHITE, align="center")
         active_buttons['next_page'] = btn_next
 
-    btn_back = pygame.Rect(40, 40, 150, 50)
-    draw_button(surface, btn_back, "< GERİ", btn_back.collidepoint(mouse_pos))
+    # Geri Butonu
+    btn_back = pygame.Rect(40, 40, 100, 40)
+    draw_cyber_rect(surface, btn_back, (150, 50, 50), filled=True)
+    draw_text_with_shadow(surface, "GERİ", pygame.font.Font(None, 25), btn_back.center, WHITE, align="center")
     active_buttons['back'] = btn_back
     
     return active_buttons
@@ -547,7 +718,7 @@ def render_ui(surface, state, data, mouse_pos=(0,0)):
             d_fill = 200 * (1 - (data['dash_cd'] / active_dash_max))
             
         pygame.draw.rect(surface, (50, 50, 50), (60, 85, 200, 10))
-        pygame.draw.rect(surface, PLAYER_DASH, (60, 85, max(0, d_fill), 10))
+        pygame.draw.rect(surface, PLAYER_DASH, (60, 85, max(0, int(d_fill)), 10))
         
         dash_font = pygame.font.Font(None, 20)
         draw_text_with_shadow(surface, "DASH", dash_font, (60, 70), PLAYER_DASH, align='midleft')
@@ -560,7 +731,7 @@ def render_ui(surface, state, data, mouse_pos=(0,0)):
             s_fill = 200 * (1 - (data['slam_cd'] / active_slam_max))
             
         pygame.draw.rect(surface, (50, 50, 50), (60, 115, 200, 10))
-        pygame.draw.rect(surface, PLAYER_SLAM, (60, 115, max(0, s_fill), 10))
+        pygame.draw.rect(surface, PLAYER_SLAM, (60, 115, max(0, int(s_fill)), 10))
         
         slam_font = pygame.font.Font(None, 20)
         draw_text_with_shadow(surface, "SLAM", slam_font, (60, 100), PLAYER_SLAM, align='midleft')
@@ -596,7 +767,7 @@ def render_ui(surface, state, data, mouse_pos=(0,0)):
         pygame.draw.rect(surface, (30, 30, 30), (w - 330, 85, 270, 20))
         
         if goal > 0:
-            pygame.draw.rect(surface, NEON_GREEN, (w - 330, 85, 270 * progress, 20))
+            pygame.draw.rect(surface, NEON_GREEN, (w - 330, 85, int(270 * progress), 20))
         
         score_font = pygame.font.Font(None, 30)
         draw_text_with_shadow(surface, score_text, score_font,
