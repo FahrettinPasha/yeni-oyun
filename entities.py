@@ -2024,12 +2024,39 @@ class IndustrialBackground:
         self.vignette        = self._bake_vignette()
         self.heat_haze_strip = self._bake_heat_haze_strip()
 
-        # ── SMOKE COLUMNS ────────────────────────────────────────────
-        # Each column is anchored to a chimney X position baked during factory gen
-        self.smoke_particles = []
-        for cx in self._chimney_positions:
-            for _ in range(random.randint(14, 22)):   # Dense column per chimney
-                self.smoke_particles.append(self._new_smoke(cx))
+        # ── DUMAN SÜTUNLARI — İLLÜZYON SİSTEMİ ─────────────────────
+        #
+        #  ESKİ: baca başına 14-22 parçacık × N baca = yüzlerce parçacık.
+        #        Her frame sorted() + per-parçacık SRCALPHA Surface yaratma.
+        #
+        #  İLLÜZYON TEKNİKLERİ:
+        #   1. SCROLLING COLUMN TEXTURE — baca başına bir kez pre-bake edilmiş
+        #      yüksek duman sütunu dokusu. Gerçek parçacık yok; dikey twin-scroll
+        #      ile "yükselen duman" yanılsaması yaratılır. Parallax katmanlarıyla
+        #      TAMAMEN AYNI numara, sadece yatay değil dikey.
+        #   2. SEAMLESSLİK — dokunun üst ve alt kenarları alpha=0'a söner;
+        #      twin-buffer döngüsünde hiç kesinti olmaz.
+        #   3. FLIPBOOK PUFF — baca ağzında 4 pre-bake edilmiş "çıkış bulutu"
+        #      sprite'ı döngüsel olarak gösterilir; yeni parçacık üretimi yok.
+        #
+        #  Sonuç: N×22 parçacık update+draw → N×2 blit (baca sayısı ne olursa)
+        #
+        self.smoke_columns = []
+        for chimney_x in self._chimney_positions:
+            col_surf = self._bake_smoke_column(chimney_x)
+            col_h    = col_surf.get_height()
+            self.smoke_columns.append({
+                'x':     chimney_x,
+                'surf':  col_surf,
+                'col_h': col_h,
+                # İki kopya: biri diğerinin hemen üzerinde → seamless döngü
+                'y1': float(self.height - col_h),   # alt kopya (aktif)
+                'y2': float(self.height - col_h * 2),  # üst kopya (bekleyen)
+                'speed': random.uniform(0.55, 1.1),
+            })
+        # Baca ağzı efekti için 8 pre-bake puff sprite (küçük→büyük)
+        self._puff_sprites = self._bake_puff_sprites()
+        self._puff_frame   = 0   # ortak flipbook sayacı
 
         # ── GEAR ASSEMBLIES (mid layer, animated) ────────────────────
         # Each gear lives inside a housing and meshes with neighbours
@@ -2500,6 +2527,88 @@ class IndustrialBackground:
                              (0, self.height - dy), (self.width, self.height - dy))
         return surf
 
+    def _bake_smoke_column(self, anchor_x):
+        """
+        İLLÜZYON 1: Dikey Kayan Sütun Dokusu
+        ─────────────────────────────────────
+        Baca başına TEK BİR SEFERLE çizilen yüksek doku.
+        Runtime'da sadece dikey twin-scroll ile kaydırılır.
+        Gerçek parçacık simülasyonu yok — göz kandırma sanatı.
+
+        Doku mantığı:
+          • Alt %15 → baca ağzı: dar, yoğun, koyu
+          • Orta %60 → açılan sütun: sallanarak genişler
+          • Üst %25 → dağılma: giderek şeffaflaşır, alpha→0
+          Üst ve alt kenar alpha=0 → twin-scroll döngüsünde
+          hiç görünür kesinti olmaz.
+        """
+        col_w  = 180          # sütun doku genişliği
+        col_h  = self.height + 600   # ekrandan taşacak kadar uzun
+        surf   = pygame.Surface((col_w, col_h), pygame.SRCALPHA)
+        rng    = random.Random(anchor_x)   # tekrarlanabilir rastgelelik
+
+        cx = col_w // 2   # sütun merkezi
+
+        # Katman renkleri (3 duman tonu)
+        layers = [
+            (self.C_SMOKE_CORE,  0.55),   # koyu çekirdek
+            (self.C_SMOKE_MID,   0.35),   # orta ton
+            (self.C_SMOKE_EDGE,  0.20),   # açık kenar
+        ]
+
+        # Dokuyu aşağıdan yukarıya bloklara böl ve her blokta
+        # kalabalık overlap'li daireler çiz (noise benzeri)
+        block_size = 40
+        for block_y in range(0, col_h, block_size // 2):
+            # Yükseklik ilerledikçe duman genişler
+            progress  = block_y / col_h          # 0=alt, 1=üst
+            spread    = 8 + int(progress * 70)   # piksel cinsinden yatay yayılma
+            density   = int(4 + progress * 3)    # bu blokta kaç daire
+
+            # Kenar sönümleme: alt %8 ve üst %20'de alpha azalır
+            if progress < 0.08:
+                edge_fade = progress / 0.08
+            elif progress > 0.80:
+                edge_fade = (1.0 - progress) / 0.20
+            else:
+                edge_fade = 1.0
+
+            for _ in range(density):
+                bx  = cx + rng.randint(-spread, spread)
+                by  = block_y + rng.randint(-block_size // 2, block_size // 2)
+                r   = rng.randint(12 + int(progress * 40), 30 + int(progress * 60))
+                col, base_alpha = rng.choice(layers)
+                a   = int(base_alpha * edge_fade * rng.uniform(0.5, 1.0) * 255)
+                a   = max(0, min(255, a))
+                if a > 0:
+                    pygame.draw.circle(surf, (*col, a), (bx, by), r)
+
+        return surf
+
+    def _bake_puff_sprites(self, n_frames=8):
+        """
+        İLLÜZYON 2: Baca Ağzı Flipbook
+        ────────────────────────────────
+        8 kare pre-bake edilmiş "baca çıkış bulutu" sprite'ı.
+        Küçükten büyüğe sıralanır; frame sayacı döngüsel ilerler.
+        Runtime'da sıfır yeni Surface — sadece blit.
+        """
+        sprites = []
+        for i in range(n_frames):
+            t  = i / (n_frames - 1)        # 0→1 (küçük→büyük/şeffaf)
+            r  = int(8 + t * 36)           # yarıçap büyür
+            a  = int(200 * (1 - t * 0.7))  # alpha azalır
+            s  = pygame.Surface((r * 2 + 4, r * 2 + 4), pygame.SRCALPHA)
+            # Üç halkalı yumuşak puff
+            pygame.draw.circle(s, (*self.C_SMOKE_EDGE, a // 3),
+                               (r+2, r+2), r)
+            pygame.draw.circle(s, (*self.C_SMOKE_MID,  a * 2 // 3),
+                               (r+2, r+2), max(1, r * 3 // 4))
+            pygame.draw.circle(s, (*self.C_SMOKE_CORE, a),
+                               (r+2, r+2), max(1, r // 2))
+            sprites.append(s)
+        return sprites
+
     def _bake_heat_haze_strip(self):
         """
         A pre-baked wavy alpha mask used to simulate ground-level heat distortion.
@@ -2620,19 +2729,20 @@ class IndustrialBackground:
         # ── Heat haze scroll ──────────────────────────────────────
         self._haze_offset = (self._haze_offset + 0.6) % self.width
 
-        # ── Smoke ─────────────────────────────────────────────────
-        for s in self.smoke_particles:
-            s['y']     -= s['speed']
-            s['x']     += s['drift'] + math.sin(self.frame_count * 0.018 + s['phase']) * 0.5
-            # Grow toward max_r — faster when small, slows as it approaches max
-            if s['r'] < s['max_r']:
-                s['r'] += (s['max_r'] - s['r']) * 0.008 + 0.1
-            # Fade out as it expands and rises
-            s['alpha'] -= 0.4
-            if s['alpha'] <= 0 or s['y'] < -s['r'] * 2:
-                new_s = self._new_smoke(s['anchor'])
-                s.clear()
-                s.update(new_s)
+        # ── DUMAN SÜTUNLARI — twin-scroll ────────────────────────
+        # Her frame sadece y offset güncellenir.
+        # Bir kopya üstten çıkınca diğerinin altına eklenir.
+        for col in self.smoke_columns:
+            col['y1'] -= col['speed']
+            col['y2'] -= col['speed']
+            # Üstten çıkan kopya diğerinin altına geçer
+            if col['y1'] < -col['col_h']:
+                col['y1'] = col['y2'] + col['col_h']
+            if col['y2'] < -col['col_h']:
+                col['y2'] = col['y1'] + col['col_h']
+
+        # Flipbook sayacı (baca ağzı puff animasyonu)
+        self._puff_frame = (self._puff_frame + 1) % (len(self._puff_sprites) * 4)
 
         # ── Gears ─────────────────────────────────────────────────
         for assembly in self.gear_assemblies:
@@ -2802,32 +2912,32 @@ class IndustrialBackground:
         surface.blit(self.far_factories, (xf, 0))
         surface.blit(self.far_factories, (xf + self.width + 600, 0))
 
-        # ── 4. SMOKE COLUMNS — dense, layered, volumetric ─────────
-        # Sort by radius so larger (older) particles draw behind smaller (newer)
-        for s in sorted(self.smoke_particles, key=lambda s: -s['r']):
-            r = max(2, int(s['r']))
-            a = max(0, int(s['alpha']))
-            if a == 0:
-                continue
-            layer = s['layer']
-            if layer == 0:
-                core_c = self.C_SMOKE_CORE
-                edge_c = self.C_SMOKE_MID
-            elif layer == 1:
-                core_c = self.C_SMOKE_MID
-                edge_c = self.C_SMOKE_EDGE
-            else:
-                core_c = self.C_SMOKE_EDGE
-                edge_c = (90, 80, 65)
+        # ── 4. DUMAN SÜTUNLARI — illüzyon twin-scroll ────────────
+        #
+        #  İLLÜZYON 1: Kaydırılan doku.
+        #    Baca başına 2 blit (twin kopya). Toplam: N_baca × 2 blit.
+        #    Parçacık update yok, sorted() yok, Surface yaratma yok.
+        #    Göz "yükselen duman" görür; gerçekte tek bir doku kayıyor.
+        #
+        #  İLLÜZYON 2: Flipbook puff.
+        #    Baca ağzında 8 pre-bake sprite döngüsel gösterilir.
+        #    "Taze duman çıkıyor" yanılsaması → sıfır yeni Surface.
+        #
+        puff_idx = (self._puff_frame // 4) % len(self._puff_sprites)
+        puff_spr = self._puff_sprites[puff_idx]
+        pr       = puff_spr.get_width() // 2
 
-            smoke_s = pygame.Surface((r * 2 + 4, r * 2 + 4), pygame.SRCALPHA)
-            # Soft edge ring (drawn first so core overlaps)
-            pygame.draw.circle(smoke_s, (*edge_c, a // 3),    (r+2, r+2), r)
-            # Dense mid ring
-            pygame.draw.circle(smoke_s, (*core_c, a * 2 // 3),(r+2, r+2), max(1, r * 3 // 4))
-            # Darkest core
-            pygame.draw.circle(smoke_s, (*core_c, a),         (r+2, r+2), max(1, r // 2))
-            surface.blit(smoke_s, (int(s['x']) - r - 2, int(s['y']) - r - 2))
+        for col in self.smoke_columns:
+            # Ana sütun: iki twin kopya
+            cx_draw = col['x'] - col['surf'].get_width() // 2
+            if col['y1'] < self.height:
+                surface.blit(col['surf'], (cx_draw, int(col['y1'])))
+            if col['y2'] < self.height:
+                surface.blit(col['surf'], (cx_draw, int(col['y2'])))
+
+            # Baca ağzı puff (baca yüksekliği bilinmiyor; zeminden ~200px yukarıda)
+            puff_y = self.height - 220
+            surface.blit(puff_spr, (col['x'] - pr, puff_y - pr))
 
         # ── 5. MID MACHINERY (pipes, vessels, housing silhouettes) ─
         xm = int(self.scroll_mid)
@@ -2948,3 +3058,234 @@ class IndustrialBackground:
 
         # ── 12. VIGNETTE ────────────────────────────────────────────
         surface.blit(self.vignette, (0, 0))
+
+class SlumsBackground:
+    """
+    THE SLUMS (VAROŞLAR)
+    Atmosfer: Klostrofobik, Yağmurlu, Neon, Kaotik Kablolar.
+    Katmanlar:
+      1. Gökyüzü: Şehir ışıklarından kaynaklı kirli mor/lacivert gradient.
+      2. Uzak Binalar: Devasa, pencere dolu "Mega-Blok" silüetleri.
+      3. Orta Katman: Detaylı gecekondular, klima üniteleri, sarkan kablolar, neon tabelalar.
+      4. Yağmur: Sürekli yağan asit yağmuru efekti.
+      5. Metro: Arada sırada geçen fütüristik tren.
+    """
+    def __init__(self, screen_width, screen_height):
+        self.width = screen_width
+        self.height = screen_height
+        self.frame_count = 0
+        
+        # Parallax Scroll Değerleri
+        self.scroll_far = 0.0
+        self.scroll_mid = 0.0
+        
+        # Renk Paleti (Cyberpunk Noir)
+        self.C_SKY_TOP = (5, 5, 10)       # Gece Siyahı
+        self.C_SKY_BOT = (20, 10, 30)     # Kirli Mor (Işık Kirliliği)
+        self.C_BUILDING_FAR = (10, 10, 15)
+        self.C_BUILDING_MID = (20, 20, 25)
+        self.C_WINDOW_LIT = (200, 200, 150) # Soluk Sarı
+        self.C_WINDOW_OFF = (15, 15, 20)
+        self.C_NEON_PINK = (255, 0, 128)
+        self.C_NEON_CYAN = (0, 255, 255)
+        self.C_CABLE = (10, 10, 10)
+        self.C_RAIN = (100, 150, 255)
+
+        # Pre-Bake (Önceden Çizilmiş) Katmanlar
+        self.sky_surf = self._bake_sky()
+        self.far_layer = self._bake_far_layer()
+        self.mid_layer = self._bake_mid_layer()
+        
+        # Dinamik Efektler
+        self.rain_drops = []
+        for _ in range(150): # Yağmur yoğunluğu
+            self.rain_drops.append(self._create_drop())
+            
+        self.train_x = -2000
+        self.train_timer = random.randint(200, 600)
+
+    def _bake_sky(self):
+        surf = pygame.Surface((self.width, self.height))
+        for y in range(self.height):
+            t = y / self.height
+            r = int(self.C_SKY_TOP[0] + (self.C_SKY_BOT[0] - self.C_SKY_TOP[0]) * t)
+            g = int(self.C_SKY_TOP[1] + (self.C_SKY_BOT[1] - self.C_SKY_TOP[1]) * t)
+            b = int(self.C_SKY_TOP[2] + (self.C_SKY_BOT[2] - self.C_SKY_TOP[2]) * t)
+            pygame.draw.line(surf, (r, g, b), (0, y), (self.width, y))
+        return surf
+
+    def _bake_far_layer(self):
+        """Ufuktaki devasa 'Mega-Blok' apartmanlar."""
+        w = self.width + 600 # Scroll için geniş alan
+        surf = pygame.Surface((w, self.height), pygame.SRCALPHA)
+        
+        current_x = 0
+        while current_x < w:
+            bw = random.randint(80, 200)
+            bh = random.randint(400, 700) # Çok yüksek binalar
+            by = self.height - bh + 50 # Aşağıdan başlasın
+            
+            # Bina Gövdesi
+            pygame.draw.rect(surf, self.C_BUILDING_FAR, (current_x, by, bw, bh))
+            
+            # Pencereler (Izgara şeklinde)
+            rows = bh // 15
+            cols = bw // 10
+            for r in range(rows):
+                for c in range(cols):
+                    if random.random() < 0.2: # %20 ışıklar açık
+                        wx = current_x + c * 10 + 2
+                        wy = by + r * 15 + 2
+                        pygame.draw.rect(surf, (*self.C_WINDOW_LIT, 100), (wx, wy, 4, 8))
+            
+            # Bina tepesindeki kırmızı uyarı ışıkları
+            if random.random() < 0.5:
+                pygame.draw.line(surf, (200, 0, 0), (current_x + bw//2, by), (current_x + bw//2, by-20), 2)
+            
+            current_x += bw + random.randint(5, 20)
+            
+        return surf
+
+    def _bake_mid_layer(self):
+        """Yakın binalar, kablolar, tabelalar."""
+        w = self.width + 600
+        surf = pygame.Surface((w, self.height), pygame.SRCALPHA)
+        
+        current_x = 0
+        prev_roof_right = (0, 0) # Kablo bağlantısı için
+        
+        while current_x < w:
+            bw = random.randint(150, 300)
+            bh = random.randint(200, 500)
+            by = self.height - bh
+            
+            # Bina
+            pygame.draw.rect(surf, self.C_BUILDING_MID, (current_x, by, bw, bh))
+            pygame.draw.rect(surf, (30, 30, 40), (current_x, by, bw, bh), 2) # Çerçeve
+            
+            # Detaylar: Klima Üniteleri
+            for _ in range(random.randint(2, 5)):
+                ac_x = current_x - 10 if random.random() < 0.5 else current_x + bw
+                ac_y = by + random.randint(20, bh - 50)
+                pygame.draw.rect(surf, (40, 40, 50), (ac_x, ac_y, 10, 15))
+            
+            # Detaylar: Neon Tabelalar (Japonca/Hacker tarzı dikey tabelalar)
+            if random.random() < 0.6:
+                sign_w = 20
+                sign_h = random.randint(60, 120)
+                sign_x = current_x + 20
+                sign_y = by + 30
+                color = random.choice([self.C_NEON_PINK, self.C_NEON_CYAN, (255, 255, 0)])
+                
+                # Neon Glow
+                s_glow = pygame.Surface((sign_w + 20, sign_h + 20), pygame.SRCALPHA)
+                pygame.draw.rect(s_glow, (*color, 50), (10, 10, sign_w, sign_h))
+                surf.blit(s_glow, (sign_x - 10, sign_y - 10))
+                
+                # Tabela içi
+                pygame.draw.rect(surf, (0,0,0), (sign_x, sign_y, sign_w, sign_h))
+                pygame.draw.rect(surf, color, (sign_x, sign_y, sign_w, sign_h), 2)
+                # Rastgele çizgiler (Yazı taklidi)
+                for i in range(5):
+                    ly = sign_y + 10 + i * 15
+                    if ly < sign_y + sign_h - 5:
+                        pygame.draw.line(surf, color, (sign_x+4, ly), (sign_x+sign_w-4, ly), 2)
+
+            # Detaylar: Kablolar (Binalar arası)
+            if current_x > 0:
+                start_pos = prev_roof_right
+                end_pos = (current_x + 10, by + random.randint(10, 100))
+                
+                # Bezier/Sarkma efekti (Basit parabol)
+                mid_x = (start_pos[0] + end_pos[0]) / 2
+                sag = random.randint(20, 60)
+                mid_y = (start_pos[1] + end_pos[1]) / 2 + sag
+                
+                pygame.draw.lines(surf, self.C_CABLE, False, [start_pos, (mid_x, mid_y), end_pos], 2)
+
+            prev_roof_right = (current_x + bw - 10, by + random.randint(10, 50))
+            current_x += bw + random.randint(50, 150) # Binalar arası boşluk (sokak)
+
+        return surf
+
+    def _create_drop(self):
+        return {
+            'x': random.randint(0, self.width),
+            'y': random.randint(-100, self.height),
+            'speed': random.uniform(15, 25),
+            'len': random.randint(10, 30),
+            'alpha': random.randint(50, 150)
+        }
+
+    def update(self, camera_speed):
+        self.frame_count += 1
+        
+        # Parallax Update
+        self.scroll_far -= camera_speed * 0.1
+        self.scroll_mid -= camera_speed * 0.5
+        
+        # Sonsuz Döngü Reset
+        bg_w = self.width + 600
+        if self.scroll_far <= -bg_w: self.scroll_far += bg_w
+        if self.scroll_mid <= -bg_w: self.scroll_mid += bg_w
+        
+        # Yağmur Update
+        for drop in self.rain_drops:
+            drop['y'] += drop['speed']
+            drop['x'] -= (camera_speed * 0.5) + 2 # Hafif rüzgar etkisi (sola)
+            
+            if drop['y'] > self.height:
+                drop['y'] = random.randint(-50, -10)
+                drop['x'] = random.randint(0, self.width + 200)
+
+        # Metro Treni Mantığı (Arkaplanda geçen)
+        self.train_timer -= 1
+        if self.train_timer <= 0:
+            self.train_x = self.width + 100 # Sağdan başla
+            self.train_timer = random.randint(600, 1200) # Tekrar gelmesi uzun sürsün
+            
+        if self.train_x > -1000: # Tren ekrandaysa veya geçiyorsa
+            self.train_x -= (camera_speed * 0.2) + 15 # Kameradan hızlı gitsin
+
+    def draw(self, surface):
+        # 1. Gökyüzü
+        surface.blit(self.sky_surf, (0, 0))
+        
+        # 2. Uzak Binalar (Mega-Bloklar)
+        x_far = int(self.scroll_far)
+        surface.blit(self.far_layer, (x_far, 0))
+        surface.blit(self.far_layer, (x_far + self.width + 600, 0))
+        
+        # 3. Metro Treni (Binaların arkasından/arasından geçsin)
+        if self.train_x > -1000 and self.train_x < self.width + 200:
+            train_y = self.height - 350
+            # Tren Gövdesi
+            pygame.draw.rect(surface, (10, 10, 20), (self.train_x, train_y, 800, 40))
+            # Tren Pencereleri (Hızlı hareket flu etkisi için uzun çizgiler)
+            for i in range(10):
+                wx = self.train_x + 50 + i * 70
+                pygame.draw.rect(surface, (200, 255, 255), (wx, train_y + 10, 50, 15))
+            # Tren Işığı (Ön)
+            pygame.draw.circle(surface, (255, 255, 200), (int(self.train_x), train_y + 20), 15)
+            # Işık hüzmesi
+            s_light = pygame.Surface((300, 100), pygame.SRCALPHA)
+            pygame.draw.polygon(s_light, (255, 255, 200, 30), [(300, 50), (0, 0), (0, 100)])
+            surface.blit(s_light, (self.train_x - 300, train_y - 30))
+
+        # 4. Orta Katman (Gecekondular)
+        x_mid = int(self.scroll_mid)
+        surface.blit(self.mid_layer, (x_mid, 0))
+        surface.blit(self.mid_layer, (x_mid + self.width + 600, 0))
+        
+        # 5. Yağmur Efekti
+        for drop in self.rain_drops:
+            start_pos = (drop['x'], drop['y'])
+            end_pos = (drop['x'] - 2, drop['y'] + drop['len'])
+            
+            if drop['x'] > 0 and drop['x'] < self.width:
+                pygame.draw.line(surface, (150, 180, 255), start_pos, end_pos, 1)
+
+        # 6. Alt Sis (Yer seviyesi kirliliği)
+        s_fog = pygame.Surface((self.width, 150), pygame.SRCALPHA)
+        pygame.draw.rect(s_fog, (10, 5, 20, 100), s_fog.get_rect())
+        surface.blit(s_fog, (0, self.height - 150))

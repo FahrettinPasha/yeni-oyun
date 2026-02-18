@@ -1,14 +1,19 @@
 {
-    "karma": -80,
-    "saved_souls": 0,
+    "karma": 75,
+    "saved_souls": 4,
     "easy_mode": {
-        "unlocked_levels": 6,
+        "unlocked_levels": 12,
         "completed_levels": [
             1,
             2,
             3,
             4,
-            5
+            5,
+            6,
+            7,
+            8,
+            9,
+            11
         ],
         "high_scores": {
             "1": 750,
@@ -16,7 +21,11 @@
             "3": 2704,
             "4": 3158,
             "5": 3750,
-            "6": 2590
+            "6": 9003,
+            "7": 10544,
+            "8": 12066,
+            "9": 13509,
+            "11": 45012
         }
     },
     "settings": {

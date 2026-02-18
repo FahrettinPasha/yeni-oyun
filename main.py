@@ -1,5 +1,5 @@
 # main.py
-from entities import CityBackground, GutterBackground, IndustrialBackground
+from entities import CityBackground, GutterBackground, IndustrialBackground, SlumsBackground
 from boss_entities import VasilCompanion, BossSpike, BossLightning
 from boss_manager import BossManager
 import pygame
@@ -492,6 +492,9 @@ def init_game():
     # 3 Numaralı Tema: INDUSTRIAL ZONE (YENİ)
     elif theme_idx == 3:
         active_background = IndustrialBackground(LOGICAL_WIDTH, LOGICAL_HEIGHT)
+    # Slums bölgeleri (11-14 arası seviyeler)
+    elif 11 <= current_level_idx <= 14:
+        active_background = SlumsBackground(LOGICAL_WIDTH, LOGICAL_HEIGHT)
     # 0, 1, 4 Numaralı Temalar: Şehir
     else:
         active_background = CityBackground(LOGICAL_WIDTH, LOGICAL_HEIGHT)
