@@ -1,17 +1,22 @@
 {
-    "karma": 150,
+    "karma": -80,
     "saved_souls": 0,
     "easy_mode": {
-        "unlocked_levels": 4,
+        "unlocked_levels": 6,
         "completed_levels": [
             1,
             2,
-            3
+            3,
+            4,
+            5
         ],
         "high_scores": {
             "1": 750,
-            "2": 1500,
-            "3": 2250
+            "2": 1837,
+            "3": 2704,
+            "4": 3158,
+            "5": 3750,
+            "6": 2590
         }
     },
     "settings": {
@@ -19,7 +24,7 @@
         "res_index": 1,
         "fps_index": 1,
         "sound_volume": 0.7,
-        "music_volume": 0.5,
+        "music_volume": 0.0,
         "effects_volume": 0.8
     },
     "nexus_simulation": {

@@ -1,4 +1,5 @@
 # main.py
+from entities import CityBackground, GutterBackground, IndustrialBackground
 from boss_entities import VasilCompanion, BossSpike, BossLightning
 from boss_manager import BossManager
 import pygame
@@ -29,8 +30,8 @@ from local_bosses import NexusBoss, AresBoss, VasilBoss, EnemyBullet
 # --- GÜNCEL UTILS IMPORT (audio_manager eklendi) ---
 from utils import generate_sound_effect, generate_ambient_fallback, generate_calm_ambient, load_sound_asset, draw_text, draw_animated_player, wrap_text, draw_text_with_shadow, get_silent_sound, audio_manager
 from vfx import LightningBolt, FlameSpark, GhostTrail, SpeedLine, Shockwave, EnergyOrb, ParticleExplosion, ScreenFlash, SavedSoul
-# YENİ: CityBackground eklendi
-from entities import Platform, Star, CursedEnemy, NPC, DroneEnemy, TankEnemy, CityBackground
+# YENİ: GutterBackground eklendi
+from entities import Platform, Star, CursedEnemy, NPC, DroneEnemy, TankEnemy, CityBackground, GutterBackground
 from ui_system import render_ui
 from animations import CharacterAnimator, TrailEffect
 from save_system import SaveManager
@@ -93,7 +94,7 @@ METEOR_FIRE = (255, 80, 0)
 # --- 3. DURUM DEĞİŞKENLERİ ---
 GAME_STATE = 'MENU'
 vasil_companion = None
-city_bg = None # YENİ: Şehir Arka Planı Globali
+active_background = None # YENİ: Global Arka Plan Değişkeni (Eski city_bg)
 
 # Varsayılan ayarlar (sadece ilk çalıştırma için)
 game_settings = {
@@ -295,6 +296,8 @@ def start_loading_sequence(next_state_override=None):
 
 def start_story_chapter(chapter_id):
     global GAME_STATE, current_level_idx, player_x, player_y, camera_speed, CURRENT_THEME, y_velocity
+    global active_background
+    
     story_manager.load_chapter(chapter_id)
     GAME_STATE = 'CHAT'
 
@@ -312,6 +315,7 @@ def start_story_chapter(chapter_id):
         y_velocity = 0
         camera_speed = 0
         CURRENT_THEME = THEMES[2]
+        active_background = GutterBackground(LOGICAL_WIDTH, LOGICAL_HEIGHT)
 
 def init_rest_area():
     global npcs, camera_speed, CURRENT_THEME, player_karma
@@ -350,6 +354,7 @@ def init_limbo():
     global player_x, player_y, y_velocity, camera_speed, CURRENT_THEME
     global all_platforms, all_enemies, all_vfx, npcs, game_canvas
     global current_level_idx, boss_manager_system
+    global active_background
 
     boss_manager_system.reset()
     current_level_idx = 99
@@ -360,6 +365,9 @@ def init_limbo():
     camera_speed = 0
     y_velocity = 0
     CURRENT_THEME = THEMES[2]
+    
+    # Limbo için Arka Plan
+    active_background = GutterBackground(LOGICAL_WIDTH, LOGICAL_HEIGHT)
 
     center_plat = Platform(LOGICAL_WIDTH//2 - 400, LOGICAL_HEIGHT - 150, 800, 50, theme_index=4)
     all_platforms.add(center_plat)
@@ -463,7 +471,7 @@ def init_game():
     global has_revived_this_run, has_talisman
     global boss_manager_system, vasil_companion
     global level_15_timer, finisher_active, finisher_state_timer, finisher_type, level_15_cutscene_played
-    global city_bg # Global city_bg'yi al
+    global active_background # Global active_background
     global cached_ui_surface, last_score # UI Cache
 
     # --- OPTİMİZASYON: Oyun sırasında GC'yi kapat ---
@@ -473,6 +481,21 @@ def init_game():
     last_score = -1
 
     lvl_config = EASY_MODE_LEVELS.get(current_level_idx, EASY_MODE_LEVELS[1])
+
+    # --- ARKA PLAN SEÇİMİ ---
+    # Tema indeksine göre hangi arka planın yükleneceğine karar ver
+    theme_idx = lvl_config.get('theme_index', 0)
+    
+    # 2 Numaralı Tema: THE GUTTER
+    if theme_idx == 2 or current_level_idx == 99:
+        active_background = GutterBackground(LOGICAL_WIDTH, LOGICAL_HEIGHT)
+    # 3 Numaralı Tema: INDUSTRIAL ZONE (YENİ)
+    elif theme_idx == 3:
+        active_background = IndustrialBackground(LOGICAL_WIDTH, LOGICAL_HEIGHT)
+    # 0, 1, 4 Numaralı Temalar: Şehir
+    else:
+        active_background = CityBackground(LOGICAL_WIDTH, LOGICAL_HEIGHT)
+    # ------------------------
 
     if current_level_idx < 11:
         has_talisman = False
@@ -488,9 +511,6 @@ def init_game():
     npc_conversation_active = False
     npc_chat_input = ""
     npc_chat_history = []
-
-    # Şehir Arka Planını Başlat
-    city_bg = CityBackground(LOGICAL_WIDTH, LOGICAL_HEIGHT)
 
     if lvl_config.get('type') == 'rest_area':
         camera_speed = 0
@@ -508,7 +528,6 @@ def init_game():
     elif lvl_config.get('type') == 'scrolling_boss':
         mult = lvl_config.get('speed_mult', 1.0)
         camera_speed = (INITIAL_CAMERA_SPEED * 1.25) * mult
-        theme_idx = lvl_config.get('theme_index', 0)
         CURRENT_THEME = THEMES[theme_idx]
         player_x, player_y = 150.0, float(LOGICAL_HEIGHT - 300)
         music_file = lvl_config.get('music_file', 'dark_ambient.mp3')
@@ -538,7 +557,6 @@ def init_game():
         if current_level_idx == 10 and mult <= 0.1:
             mult = 1.4
         camera_speed = (INITIAL_CAMERA_SPEED * 1.25) * mult
-        theme_idx = lvl_config.get('theme_index', 0)
         CURRENT_THEME = THEMES[theme_idx]
         player_x, player_y = 150.0, float(LOGICAL_HEIGHT - 300)
         music_file = lvl_config.get('music_file', 'dark_ambient.mp3')
@@ -619,7 +637,7 @@ def run_game_loop():
     global boss_manager_system
     global level_15_timer, finisher_active, finisher_state_timer, finisher_type, level_15_cutscene_played
     global game_settings
-    global city_bg # Global city_bg
+    global active_background # Global active_background
     # --- OPTİMİZASYON UI ---
     global cached_ui_surface, last_score, last_active_ui_elements
 
@@ -659,7 +677,7 @@ def run_game_loop():
     level_15_cutscene_played = False
     boss_manager_system.reset()
     vasil_companion = None
-    city_bg = None
+    active_background = None
 
     while running:
         current_time = pygame.time.get_ticks()
@@ -676,8 +694,8 @@ def run_game_loop():
         mouse_pos = (raw_mouse_pos[0] * scale_x, raw_mouse_pos[1] * scale_y)
         
         # Arka planı güncelle
-        if city_bg:
-            city_bg.update(camera_speed)
+        if active_background:
+            active_background.update(camera_speed)
 
         if frame_count % 30 == 0:
             if len(all_vfx) > MAX_VFX_COUNT:
@@ -1629,15 +1647,18 @@ def run_game_loop():
                 era_data = time_layer.eras[time_layer.current_era]
                 game_canvas.fill(era_data.get('bg_color', CURRENT_THEME["bg_color"]))
             else:
+                # Arka Plan Rengi (Temel)
                 game_canvas.fill(CURRENT_THEME["bg_color"])
             
             # --- YENİ ÇİZİM SIRASI ---
-            # Şehir Arka Planını Çiz (Fill'den sonra, Yıldızlardan Önce)
-            if city_bg:
-                city_bg.draw(game_canvas)
+            # Aktif Arka Planı Çiz
+            if active_background:
+                active_background.draw(game_canvas)
 
-            for s in stars:
-                s.draw(game_canvas)
+            # Yıldızlar sadece Gutter veya Industrial değilse (yani açık havadaysak) çizilsin
+            if not isinstance(active_background, (GutterBackground, IndustrialBackground)):
+                for s in stars:
+                    s.draw(game_canvas)
 
             if current_level_idx in [10, 15]:
                 current_k = save_manager.get_karma()
