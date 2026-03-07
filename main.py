@@ -65,7 +65,7 @@ asset_paths = {
     'npc_image': 'assets/images/npc_silhouette.png'}
 
 # --- YENİ: BOSS MANAGER SİSTEMİ ---
-boss_manager_system = BossManager()
+boss_manager_system = BossManager() # deneme1234
 
 # --- BEAT 'EM UP SİSTEMLERİ ---
 combo_system  = ComboSystem()
